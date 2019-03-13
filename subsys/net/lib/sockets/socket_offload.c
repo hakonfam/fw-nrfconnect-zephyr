@@ -20,7 +20,6 @@ void socket_offload_register(const struct socket_offload *ops)
 	socket_ops = ops;
 }
 
-#ifdef CONFIG_SOC_FAMILY_TISIMPLELINK
 int fcntl(int fd, int cmd, ...)
 {
 	__ASSERT_NO_MSG(socket_ops);
@@ -34,5 +33,6 @@ int fcntl(int fd, int cmd, ...)
 	va_end(args);
 
 	return res;
+}
 }
 #endif
