@@ -461,6 +461,23 @@ function(construct_add_custom_command_for_linker_pass linker_output_name output_
     set(linker_pass_define -DLINKER_PASS2)
   elseif (${linker_output_name} MATCHES "^linker_app_smem_unaligned$")
     set(linker_pass_define -DLINKER_APP_SMEM_UNALIGNED)
+  elseif (${linker_output_name} MATCHES "^linker$")
+    if(EXISTS ${APPLICATION_SOURCE_DIR}/pm.yml)
+      zephyr_compile_definitions(USE_PARTITION_MANAGER)
+      # Set a global property, so that all images (including the root image),
+      # get the variable set.
+      set_property(GLOBAL PROPERTY PROPERTY_PARTITION_MANAGER_TARGET
+        PARTITION_MANAGER_TARGET)
+      # Duplicates are removed before this list is used.
+      set_property(GLOBAL APPEND PROPERTY
+        ${IMAGE}PROPERTY_LINKER_SCRIPT_DEFINES
+        -DUSE_PARTITION_MANAGER)
+      # Below is needed to ensure that the origin app is placed correctly.
+      set_property(GLOBAL APPEND PROPERTY
+        PROPERTY_LINKER_SCRIPT_DEFINES
+        -DUSE_PARTITION_MANAGER)
+      add_dependencies(${OFFSETS_LIB} PARTITION_MANAGER_TARGET)
+    endif()
   else()
     set(linker_pass_define "")
   endif()
@@ -484,11 +501,15 @@ function(construct_add_custom_command_for_linker_pass linker_output_name output_
   zephyr_get_include_directories_for_lang(C current_includes)
   file(RELATIVE_PATH base_name "${CMAKE_BINARY_DIR}" "${PROJECT_BINARY_DIR}")
   get_property(current_defines GLOBAL PROPERTY ${IMAGE}PROPERTY_LINKER_SCRIPT_DEFINES)
+  get_property(partition_manager_target GLOBAL PROPERTY
+    PROPERTY_PARTITION_MANAGER_TARGET)
+  list(REMOVE_DUPLICATES current_includes)
 
   set(${output_variable}
     OUTPUT ${linker_cmd_file_name}
     DEPENDS
     ${LINKER_SCRIPT}
+    ${partition_manager_target}
     ${extra_dependencies}
     # NB: 'linker_script_dep' will use a keyword that ends 'DEPENDS'
     ${linker_script_dep}
