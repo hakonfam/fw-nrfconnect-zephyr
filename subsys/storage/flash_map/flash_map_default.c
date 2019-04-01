@@ -8,6 +8,18 @@
 #include <zephyr.h>
 #include <flash_map.h>
 
+#ifdef USE_PARTITION_MANAGER
+#include <pm_config.h>
+#define FLASH_AREA_FOO(i, _)				\
+	{.fa_id = i,					\
+	 .fa_off = PM_##i##_OFFSET,		\
+	 .fa_dev_name = PM_##i##_DEV,	\
+	 .fa_size = PM_##i##_SIZE,},
+
+const struct flash_area default_flash_map[] = {
+	UTIL_LISTIFY(PM_NUM, FLASH_AREA_FOO, ~)
+};
+#else
 #define FLASH_AREA_FOO(i, _)				\
 	{.fa_id = i,					\
 	 .fa_off = DT_FLASH_AREA_##i##_OFFSET,		\
@@ -17,6 +29,7 @@
 const struct flash_area default_flash_map[] = {
 	UTIL_LISTIFY(DT_FLASH_AREA_NUM, FLASH_AREA_FOO, ~)
 };
+#endif /* USE_PARTITION_MANAGER */
 
 const int flash_map_entries = ARRAY_SIZE(default_flash_map);
 const struct flash_area *flash_map = default_flash_map;
