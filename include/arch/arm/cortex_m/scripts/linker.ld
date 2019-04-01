@@ -17,7 +17,9 @@
 #include <autoconf.h>
 #include <linker/sections.h>
 #include <generated_dts_board.h>
-
+#ifdef USE_PARTITION_MANAGER
+#include <override.h>
+#endif
 #include <linker/linker-defs.h>
 #include <linker/linker-tool.h>
 
