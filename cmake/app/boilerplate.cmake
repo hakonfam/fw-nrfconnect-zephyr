@@ -243,6 +243,11 @@ if(FIRST_BOILERPLATE_EXECUTION)
     find_appropriate_cache_directory(USER_CACHE_DIR)
   endif()
   message(STATUS "Cache files will be written to: ${USER_CACHE_DIR}")
+
+  # Add target used for generator expressions.
+  # This is needed in order to express arbitrary variable values as a 
+  # generator expression.
+  add_custom_target(gen_expr)
 else() # NOT FIRST_BOILERPLATE_EXECUTION
 
   # Have the child image select the same BOARD that was selected by
@@ -542,6 +547,8 @@ zephyr_library_named(app)
 set_property(TARGET ${IMAGE}app PROPERTY ARCHIVE_OUTPUT_DIRECTORY ${IMAGE}app)
 
 add_subdirectory(${ZEPHYR_BASE} ${__build_dir})
+
+include(${ZEPHYR_BASE}/cmake/partition_manager.cmake)
 
 # Link 'app' with the Zephyr interface libraries.
 #
