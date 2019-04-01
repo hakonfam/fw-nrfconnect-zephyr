@@ -87,6 +87,7 @@ endforeach()
 zephyr_compile_definitions(
   KERNEL
   __ZEPHYR__=1
+  USE_PARTITION_MANAGER=$<TARGET_PROPERTY:gen_expr,PARTITION_MANAGER_ENABLED>
 )
 
 # @Intent: Set compiler flags to enable buffer overflow checks in libc functions
@@ -484,6 +485,11 @@ function(construct_add_custom_command_for_linker_pass linker_output_name output_
   zephyr_get_include_directories_for_lang(C current_includes)
   file(RELATIVE_PATH base_name "${CMAKE_BINARY_DIR}" "${PROJECT_BINARY_DIR}")
   get_property(current_defines GLOBAL PROPERTY ${IMAGE}PROPERTY_LINKER_SCRIPT_DEFINES)
+
+  # Set flag indicating if partition manager is active.
+  list(APPEND
+    current_defines
+    -DUSE_PARTITION_MANAGER=$<TARGET_PROPERTY:gen_expr,PARTITION_MANAGER_ENABLED>)
 
   set(${output_variable}
     OUTPUT ${linker_cmd_file_name}

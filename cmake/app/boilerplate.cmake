@@ -243,6 +243,11 @@ if(FIRST_BOILERPLATE_EXECUTION)
     find_appropriate_cache_directory(USER_CACHE_DIR)
   endif()
   message(STATUS "Cache files will be written to: ${USER_CACHE_DIR}")
+
+  # Add target used for generator expressions.
+  # This is needed in order to express arbitrary variable values as a 
+  # generator expression.
+  add_custom_target(gen_expr)
 else() # NOT FIRST_BOILERPLATE_EXECUTION
 
   # Have the child image select the same BOARD that was selected by
@@ -535,6 +540,25 @@ if(CONFIG_QEMU_TARGET)
   endif()
 endif()
 
+# This needs to be before adding ZEPHYR_BASE subdirectory
+# sice PARTITION_MANAGER_CONFIG_FILES is checked there.
+if(EXISTS ${APPLICATION_SOURCE_DIR}/pm.yml)
+  # TODO add pre-processing
+  set(pre_partition_mananger_conf
+    ${PROJECT_BINARY_DIR}/include/generated)
+  file(COPY ${APPLICATION_SOURCE_DIR}/pm.yml
+      DESTINATION
+      ${pre_partition_mananger_conf})
+    string(LENGTH ${IMAGE} len)
+    MATH(EXPR len "${len}-1")
+    string(SUBSTRING ${IMAGE} 0 ${len} image_name)
+  set_property(
+    GLOBAL APPEND PROPERTY
+    PARTITION_MANAGER_CONFIG_FILES
+    "${image_name}:${pre_partition_mananger_conf}/pm.yml:${PROJECT_BINARY_DIR}:${PROJECT_BINARY_DIR}/include/generated"
+    )
+endif()
+
 # "app" is a CMake library containing all the application code and is
 # modified by the entry point ${APPLICATION_SOURCE_DIR}/CMakeLists.txt
 # that was specified when cmake was called.
@@ -542,6 +566,45 @@ zephyr_library_named(app)
 set_property(TARGET ${IMAGE}app PROPERTY ARCHIVE_OUTPUT_DIRECTORY ${IMAGE}app)
 
 add_subdirectory(${ZEPHYR_BASE} ${__build_dir})
+
+if(FIRST_BOILERPLATE_EXECUTION)
+  get_property(
+    partition_manager_config_files
+    GLOBAL PROPERTY
+    PARTITION_MANAGER_CONFIG_FILES
+    )
+  if(partition_manager_config_files)
+    set(pm_cmd
+      COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${ZEPHYR_BASE}/scripts/partition_manager.py
+      --input ${partition_manager_config_files}
+      --app-pm-config-dir ${PROJECT_BINARY_DIR}/include/generated
+      )
+    execute_process(${pm_cmd})
+
+    # Make Partition Manager configuration available in CMake
+    import_kconfig(PM_ ${PROJECT_BINARY_DIR}/include/generated/pm.config)
+
+    set_property(
+      TARGET gen_expr
+      PROPERTY MCUBOOT_SLOT_SIZE
+      ${PM_MCUBOOT_PARTITIONS_PRIMARY_SIZE})
+    set_property(
+      TARGET gen_expr
+      PROPERTY MCUBOOT_HEADER_SIZE
+      ${PM_MCUBOOT_PAD_SIZE})
+    set_property(
+      TARGET gen_expr
+      PROPERTY PARTITION_MANAGER_ENABLED
+      1)
+  else()
+    set_property(
+      TARGET gen_expr
+      PROPERTY PARTITION_MANAGER_ENABLED
+      0)
+  endif()
+endif()
 
 # Link 'app' with the Zephyr interface libraries.
 #
