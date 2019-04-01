@@ -125,3 +125,6 @@ config NRFX_USBD
 
 config NRFX_WDT
 	bool
+
+config NRFX_NVMC
+	bool
