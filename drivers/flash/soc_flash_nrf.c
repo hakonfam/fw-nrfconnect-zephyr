@@ -77,6 +77,26 @@ static struct k_sem sem_lock;
 #define SYNC_LOCK()
 #define SYNC_UNLOCK()
 #endif
+
+#if defined(CONFIG_SOC_SERIES_NRF51X) || defined(CONFIG_SOC_SERIES_NRF52X)
+
+#define NVMC_FLASH_TOTAL_SIZE (NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE)
+#define NVMC_FLASH_PAGE_SIZE  NRF_FICR->CODEPAGESIZE
+#define NVMC_FLASH_PAGE_COUNT NRF_FICR->CODESIZE
+
+#elif defined(CONFIG_SOC_NRF9160_SICA)
+/*
+ * These symbols are needed to determine NVM page size for chips that cannot
+ * always access FICR for this information.
+ */
+#define NVMC_FLASH_TOTAL_SIZE  0x100000 /**< 1024 kB   */
+#define NVMC_FLASH_PAGE_SIZE   0x1000   /**< 4 kB      */
+#define NVMC_FLASH_PAGE_COUNT  0x100    /**< 256 pages */
+
+#else
+#error NVMC boundaries are no defined
+#endif
+
 static bool write_protect;
 
 static int write(off_t addr, const void *data, size_t len);
@@ -89,10 +109,10 @@ static inline bool is_aligned_32(u32_t data)
 
 static inline bool is_regular_addr_valid(off_t addr, size_t len)
 {
-	if (addr >= NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE ||
+	if (addr >= NVMC_FLASH_TOTAL_SIZE ||
 	    addr < 0 ||
-	    len > NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE ||
-	    addr + len > NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE) {
+	    len > NVMC_FLASH_TOTAL_SIZE ||
+	    addr + len > NVMC_FLASH_TOTAL_SIZE) {
 		return false;
 	}
 
@@ -180,7 +200,7 @@ static int flash_nrf_write(struct device *dev, off_t addr,
 
 static int flash_nrf_erase(struct device *dev, off_t addr, size_t size)
 {
-	u32_t pg_size = NRF_FICR->CODEPAGESIZE;
+	u32_t pg_size = NVMC_FLASH_PAGE_SIZE;
 	u32_t n_pages = size / pg_size;
 	int ret;
 
@@ -263,8 +283,8 @@ static int nrf_flash_init(struct device *dev)
 #endif /* CONFIG_SOC_FLASH_NRF_RADIO_SYNC */
 
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
-	dev_layout.pages_count = NRF_FICR->CODESIZE;
-	dev_layout.pages_size = NRF_FICR->CODEPAGESIZE;
+	dev_layout.pages_count = NVMC_FLASH_PAGE_COUNT;
+	dev_layout.pages_size = NVMC_FLASH_PAGE_SIZE;
 #endif
 	write_protect = true;
 
@@ -435,7 +455,7 @@ static int write_in_timeslice(off_t addr, const void *data, size_t len)
 
 static int erase_op(void *context)
 {
-	u32_t pg_size = NRF_FICR->CODEPAGESIZE;
+	u32_t pg_size = NVMC_FLASH_PAGE_SIZE;
 	struct flash_context *e_ctx = context;
 
 #if defined(CONFIG_SOC_FLASH_NRF_RADIO_SYNC)
