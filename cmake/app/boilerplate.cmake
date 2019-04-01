@@ -249,7 +249,15 @@ else() # NOT FIRST_BOILERPLATE_EXECUTION
 
   # Have the child image select the same BOARD that was selected by
   # the parent.
+  # Unless parent was "ns" in which case we assume that the child images are
+  # all are secure, and should be build using the secure version of the board.
   set(BOARD ${CACHED_BOARD})
+  if (${BOARD} MATCHES  ".*ns")
+    string(LENGTH ${BOARD} len)
+    MATH(EXPR len "${len}-2")
+    string(SUBSTRING ${BOARD} 0 ${len} BOARD)
+    message("Changed board to secure ${BOARD}")
+  endif()
 
   unset(${IMAGE}DTC_OVERLAY_FILE)
   if(EXISTS              ${APPLICATION_SOURCE_DIR}/${BOARD}.overlay)
