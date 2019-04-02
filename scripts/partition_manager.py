@@ -166,7 +166,7 @@ def get_header_guard_end(filename):
     return "#endif /* %s_H__ */" % filename.split('.h')[0].upper()
 
 
-def write_pm_config(adr_map, flash_size, pm_config_file):
+def write_pm_config(adr_map, flash_size, secure_region_size, pm_config_file):
     lines = list()
     lines.append(get_header_guard_start(pm_config_file))
     flash_area_id = 0
@@ -179,6 +179,11 @@ def write_pm_config(adr_map, flash_size, pm_config_file):
         lines.append("#define PM_CFG_%s_ID %d" % (key.upper(), flash_area_id))
         flash_area_id += 1
         lines.append("")
+
+    # Define last secure flash region
+    if 'spm' in adr_map.keys():
+        last_region_id = ((adr_map['spm']['address'] + adr_map['spm']['size']) // int(secure_region_size)) - 1
+        lines.append("#define PM_CFG_LAST_SECURE_REGION %d" % last_region_id)
 
     lines.append(get_header_guard_end(pm_config_file))
 
@@ -200,6 +205,7 @@ def parse_args():
     parser.add_argument("-c", "--configs", type=argparse.FileType('r', encoding='UTF-8'), nargs="+",
                         help="List of paths to generated 'autoconf.h' files.")
     parser.add_argument("-s", "--flash-size", type=int, help="Size of flash of device.")
+    parser.add_argument("-r", "--secure-region-size", type=int, help="Size of each configurable secure partition.")
     parser.add_argument("-o", "--override", help="Override file name. Will be stored in same dir as input.")
     parser.add_argument("-p", "--pm-config-file-name", help="PM Config file name. Will be stored in same dir as input.")
     parser.add_argument("-a", "--app-override-file", help="Path to root app override.h file path.")
@@ -215,7 +221,7 @@ def main():
     if args.input is not None:
         adr_map = generate_override(args.input, args.override, args.flash_size, args.configs, args.app_override_file)
         write_override_files(adr_map)
-        write_pm_config(adr_map, args.flash_size, args.pm_config_file_name)
+        write_pm_config(adr_map, args.flash_size, args.secure_region_size, args.pm_config_file_name)
     else:
         print("No input, running tests.")
         test()

@@ -586,7 +586,6 @@ if(FIRST_BOILERPLATE_EXECUTION)
     GLOBAL PROPERTY
     PARTITION_MANAGER_CONFIG_FILES
     )
-  print(partition_manager_config_files)
   if(partition_manager_config_files)
     get_property(
       partition_manager_config_targets
@@ -604,7 +603,8 @@ if(FIRST_BOILERPLATE_EXECUTION)
       --override override.h
       --pm-config-file-name pm_config.h
       --app-override-file ${PROJECT_BINARY_DIR}/include/generated/override.h
-      --flash-size 1048576
+      --flash-size 1048576 # 1024*1024
+      --secure-region-size 32768 # 0x8000
       DEPENDS
       ${partition_manager_config_targets}
       )
