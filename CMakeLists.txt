@@ -1466,6 +1466,16 @@ if(FIRST_BOILERPLATE_EXECUTION)
     )
 
   if(HEX_FILES_TO_MERGE)
+    get_property(
+      MERGE_ROOT_APP
+      GLOBAL PROPERTY
+      MERGE_ROOT_APP
+      )
+
+    if (MERGE_ROOT_APP)
+      list(APPEND HEX_FILES_TO_MERGE ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL_HEX_NAME})
+    endif()
+
     # Merge in out-of-tree hex files.
     set(MERGED_HEX_NAME merged.hex)
 
