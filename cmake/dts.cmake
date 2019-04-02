@@ -33,9 +33,9 @@ else()
 endif()
 
 if(SUPPORTS_DTS)
-  if(DTC_OVERLAY_FILE)
+  if(${IMAGE}DTC_OVERLAY_FILE)
     # Convert from space-separated files into file list
-    string(REPLACE " " ";" DTC_OVERLAY_FILE_AS_LIST ${DTC_OVERLAY_FILE})
+    string(REPLACE " " ";" DTC_OVERLAY_FILE_AS_LIST ${${IMAGE}DTC_OVERLAY_FILE})
     list(APPEND
       dts_files
       ${DTC_OVERLAY_FILE_AS_LIST}
