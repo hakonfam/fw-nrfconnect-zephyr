@@ -151,9 +151,18 @@ def set_addresses(reqs, solution, flash_size):
 
 
 def set_sub_partition_address_and_size(reqs, sub_partitions):
+    first_parent_partition = None
     for sp_name, sp_values in sub_partitions.items():
-        size = reqs[sp_values['inside']]['size'] // len(sp_values['sub_partitions'])
-        address = reqs[sp_values['inside']]['address']
+        size = 0
+        for parent_partition in sp_values['inside']:
+            if parent_partition in reqs:
+                if not first_parent_partition:
+                    first_parent_partition = parent_partition
+                size += reqs[parent_partition]['size']
+        if size == 0:
+            raise RuntimeError("No compatible parent partition found for %s" % sp_name)
+        size = size // len(sp_values['sub_partitions'])
+        address = reqs[first_parent_partition]['address']
         for sub_partition in sp_values['sub_partitions']:
             sp_key_name = "%s_%s" % (sp_name, sub_partition)
             reqs[sp_key_name] = dict()
@@ -287,12 +296,21 @@ def main():
 
 
 def test():
-    td = {'mcuboot': {'placement': {'before': ['app']}, 'size': 200},
-          'mcuboot_partitions': {'inside': 'app', 'sub_partitions': ['primary', 'secondary']},
+    td = {'spm': {'placement': {'before': ['app']}, 'size': 100},
+          'mcuboot': {'placement': {'before': ['spm', 'app']}, 'size': 200},
+          'mcuboot_partitions': {'inside': ['spm', 'app'], 'sub_partitions': ['primary', 'secondary']},
           'app': {'placement': ''}}
     s, sub_partitions = resolve(td)
     set_addresses(td, s, 1000)
     set_sub_partition_address_and_size(td, sub_partitions)
+
+    td = {'mcuboot': {'placement': {'before': ['app']}, 'size': 200},
+          'mcuboot_partitions': {'inside': ['spm', 'app'], 'sub_partitions': ['primary', 'secondary']},
+          'app': {'placement': ''}}
+    s, sub_partitions = resolve(td)
+    set_addresses(td, s, 1000)
+    set_sub_partition_address_and_size(td, sub_partitions)
+
     td = {
         'e': {'placement': {'before': ['app']}, 'size': 100},
         'a': {'placement': {'before': ['b']}, 'size': 100},
