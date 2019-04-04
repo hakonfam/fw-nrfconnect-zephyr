@@ -223,10 +223,7 @@ def write_pm_config(adr_map, pm_config_file):
 
     lines.append("\n/* Indirect, iterable list of flash areas */")
     for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['address']):
-        lines.append("#define PM_%d_DEV \"NRF_FLASH_DRV_NAME\"" % flash_area_id)
         lines.append("#define PM_%d_LABEL %s" % (flash_area_id, area_name.upper()))
-        lines.append("#define PM_%d_OFFSET 0x%x" % (flash_area_id, area_props['address']))
-        lines.append("#define PM_%d_SIZE 0x%x" % (flash_area_id, area_props['size']))
         adr_map[area_name]['flash_area_id'] = flash_area_id
         flash_area_id += 1
 
