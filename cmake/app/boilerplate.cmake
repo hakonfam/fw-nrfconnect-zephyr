@@ -593,9 +593,8 @@ if(FIRST_BOILERPLATE_EXECUTION)
       ${ZEPHYR_BASE}/scripts/partition_manager.py
       --input ${partition_manager_config_files}
       --configs ${autoconf_files}
-      --override override.h
       --pm-config-file-name pm_config.h
-      --app-override-file ${PROJECT_BINARY_DIR}/include/generated/override.h
+      --app-output-path ${PROJECT_BINARY_DIR}/include/generated
       DEPENDS
       ${partition_manager_config_targets}
       )

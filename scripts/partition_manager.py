@@ -117,17 +117,15 @@ def load_size_config(adr_map, configs):
             adr_map[k]['size'] = size_configs[k]
 
 
-def load_adr_map(adr_map, input_files, output_file_name, app_override_file):
+def load_adr_map(adr_map, input_files, app_output_path):
     for f in input_files:
         img_conf = yaml.safe_load(f)
         img_conf[list(img_conf.keys())[0]]['out_dir'] = path.dirname(f.name)
-        img_conf[list(img_conf.keys())[0]]['out_path'] = path.join(path.dirname(f.name), output_file_name)
 
         adr_map.update(img_conf)
     adr_map['app'] = dict()
     adr_map['app']['placement'] = ''
-    adr_map['app']['out_dir'] = path.dirname(app_override_file)
-    adr_map['app']['out_path'] = app_override_file
+    adr_map['app']['out_dir'] = path.dirname(app_output_path)
 
 
 def set_addresses(reqs, solution, flash_size):
@@ -171,20 +169,6 @@ def set_sub_partition_address_and_size(reqs, sub_partitions):
             address += size
 
 
-def write_override_files(adr_map):
-    for img, conf in adr_map.items():
-        if 'out_path' not in conf.keys() or 'out_dir' not in conf.keys():
-            continue  # The 'image' being inspected is not an executable, just a place-holder.
-        open(conf['out_path'], 'w').write('''\
-#undef CONFIG_FLASH_BASE_ADDRESS
-#define CONFIG_FLASH_BASE_ADDRESS %s
-#undef CONFIG_FLASH_LOAD_OFFSET
-#define CONFIG_FLASH_LOAD_OFFSET 0
-#undef CONFIG_FLASH_LOAD_SIZE
-#define CONFIG_FLASH_LOAD_SIZE %s
-''' % (hex(conf['address']), hex(conf['size'])))
-
-
 def get_flash_size(config):
     config.seek(0)  # Ensure that we search the entire file
     for line in config.readlines():
@@ -194,9 +178,9 @@ def get_flash_size(config):
     raise RuntimeError("Unable to find 'CONFIG_FLASH_SIZE' in any of: %s" % config.name)
 
 
-def generate_override(input_files, output_file_name, configs, app_override_file):
+def generate_pm_config(input_files, configs, app_output_path):
     adr_map = dict()
-    load_adr_map(adr_map, input_files, output_file_name, app_override_file)
+    load_adr_map(adr_map, input_files, app_output_path)
     load_size_config(adr_map, configs)
     flash_size = get_flash_size(configs[0])
     solution, sub_partitions = resolve(adr_map)
@@ -217,34 +201,39 @@ def get_header_guard_end(filename):
 
 
 def write_pm_config(adr_map, pm_config_file):
-    lines = list()
-    lines.append(get_header_guard_start(pm_config_file))
-    flash_area_id = 0
+    for partition_name in adr_map.keys():
+        adr_map[partition_name]['pm_config'] = list()
+        lines = adr_map[partition_name]['pm_config']
+        lines.append(get_header_guard_start(pm_config_file))
+        flash_area_id = 0
 
-    lines.append("\n/* Indirect, iterable list of flash areas */")
-    for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['address']):
-        lines.append("#define PM_%d_LABEL %s" % (flash_area_id, area_name.upper()))
-        adr_map[area_name]['flash_area_id'] = flash_area_id
-        flash_area_id += 1
+        lines.append("\n/* Indirect, iterable list of flash areas */")
+        for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['address']):
+            lines.append("#define PM_%d_LABEL %s" % (flash_area_id, area_name.upper()))
+            adr_map[area_name]['flash_area_id'] = flash_area_id
+            flash_area_id += 1
 
-    for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['flash_area_id']):
-        lines.append("#define PM_%s_ID %d" % (area_name.upper(), area_props['flash_area_id']))
-    lines.append("#define PM_NUM %d" % flash_area_id)
+        for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['flash_area_id']):
+            lines.append("#define PM_%s_ID %d" % (area_name.upper(), area_props['flash_area_id']))
+        lines.append("#define PM_NUM %d" % flash_area_id)
 
-    lines.append("\n/* Direct look up list of flash areas */")
-    for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['address']):
-        lines.append("#define PM_%s_ADDRESS 0x%x" % (area_name.upper(), area_props['address']))
-        lines.append("#define PM_%s_SIZE 0x%x" % (area_name.upper(), area_props['size']))
-        lines.append("#define PM_%s_DEV_NAME \"NRF_FLASH_DRV_NAME\"" % area_name.upper())
+        lines.append("\n/* Direct look up list of flash areas */")
+        for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['address']):
+            lines.append("#define PM_%s_ADDRESS 0x%x" % (area_name.upper(), area_props['address']))
+            lines.append("#define PM_%s_SIZE 0x%x" % (area_name.upper(), area_props['size']))
+            lines.append("#define PM_%s_DEV_NAME \"NRF_FLASH_DRV_NAME\"" % area_name.upper())
 
-    lines.append(get_header_guard_end(pm_config_file))
+        lines.append("#define PM_ADDRESS 0x%x" % adr_map[partition_name]['address'])
+        lines.append("#define PM_SIZE 0x%x" % adr_map[partition_name]['size'])
+
+        lines.append(get_header_guard_end(pm_config_file))
 
     # Store complete size/address configuration to all input paths
     for area_name, area_props in adr_map.items():
-        if 'out_path' not in area_props.keys() or 'out_dir' not in area_props.keys():
+        if 'out_dir' not in area_props.keys():
             continue  # The 'image' being inspected is not an executable, just a place-holder.
-        # TODO replace 'out_dir' with 'out_path' and change the semantics of the latter
-        open(path.join(adr_map[area_name]['out_dir'], pm_config_file), 'w').write('\n'.join(lines))
+        with open(path.join(adr_map[area_name]['out_dir'], pm_config_file), 'w') as out_file:
+            out_file.write('\n'.join(adr_map[area_name]['pm_config']))
 
 
 def parse_args():
@@ -255,20 +244,18 @@ the placement of all partitions found.
 The partitions and their relative placement is defined in the 'pm.yml' files. The 'autoconf.h' files are used
 to find the partition sizes, as well as the total flash size.
 
-This script generates two sets of files.
-1 - override.h, which is included in linker scripts to set the address and size of each partition
-2 - pm_config.h which contains all addresses and sizes of all partitions.
+This script generates a file for each partition - "pm_config.h". 
+This file contains all addresses and sizes of all partitions.
 
-These files are stored relative to where the 'autoconf.h' files are found''',
+"pm_config.h" is stored relative to where the 'autoconf.h' files are found''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument("-i", "--input", type=argparse.FileType('r', encoding='UTF-8'), nargs="+",
                         help="List of yaml formatted config files. See tests in this file for examples.")
     parser.add_argument("-c", "--configs", type=argparse.FileType('r', encoding='UTF-8'), nargs="+",
                         help="List of paths to generated 'autoconf.h' files.")
-    parser.add_argument("-o", "--override", help="Override file name. Will be stored in same dir as input.")
     parser.add_argument("-p", "--pm-config-file-name", help="PM Config file name. Will be stored in same dir as input.")
-    parser.add_argument("-a", "--app-override-file", help="Path to root app override.h file path.")
+    parser.add_argument("-a", "--app-output-path", help="Path to root app folder with generated include files.")
 
     args = parser.parse_args()
 
@@ -279,13 +266,12 @@ def main():
     args = parse_args()
 
     if args.input is not None:
-        adr_map = generate_override(args.input, args.override, args.configs, args.app_override_file)
+        adr_map = generate_pm_config(args.input, args.configs, args.app_output_path)
 
         # Check to see if app being built is a sub-image, in which case we need special handling of the override file.
-        if len(args.input) == 1 and path.dirname(args.input[0].name) == path.dirname(args.app_override_file):
-            # Unset the 'out_path' from the 'app' to avoid overwriting the correct override.h values
-            del adr_map['app']['out_path']
-        write_override_files(adr_map)
+        if len(args.input) == 1 and path.dirname(args.input[0].name) == path.dirname(args.app_output_path):
+            # Unset the 'out_dir' from the 'app' to avoid overwriting the correct override.h values
+            del adr_map['app']['out_dir']
         write_pm_config(adr_map, args.pm_config_file_name)
     else:
         print("No input, running tests.")
