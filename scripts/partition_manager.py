@@ -207,47 +207,74 @@ def get_header_guard_end(filename):
     return "#endif /* %s_H__ */" % filename.split('.h')[0].upper()
 
 
-def write_pm_config(adr_map, app_output_dir):
+def get_config_lines(adr_map, head, split):
+    lines = list()
+
+    def fn(a, b):
+        return lines.append(head + "PM_" + a + split + b)
+
+    for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['address']):
+        fn("%s_ADDRESS" % area_name.upper(), "0x%x" % area_props['address'])
+        fn("%s_SIZE" % area_name.upper(), "0x%x" % area_props['size'])
+        fn("%s_DEV_NAME" % area_name.upper(), "\"NRF_FLASH_DRV_NAME\"")
+
+    flash_area_id = 0
+    for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['address']):
+        fn("%d_DEV" % flash_area_id, "\"NRF_FLASH_DRV_NAME\"")
+        fn("%d_LABEL" % flash_area_id, "%s" % area_name.upper())
+        fn("%d_OFFSET" % flash_area_id, "0x%x" % area_props['address'])
+        fn("%d_SIZE" % flash_area_id, "0x%x" % area_props['size'])
+        adr_map[area_name]['flash_area_id'] = flash_area_id
+        flash_area_id += 1
+
+    for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['flash_area_id']):
+        fn("%s_ID" % area_name.upper(), "%d" % area_props['flash_area_id'])
+    fn("NUM", "%d" % flash_area_id)
+
+    return lines
+
+
+def only_sub_image_is_being_built(adr_map, app_output_dir):
+    if len(adr_map) == 2:
+        non_app_key = [non_app_key for non_app_key in adr_map.keys() if non_app_key != 'app'][0]
+        return app_output_dir == adr_map[non_app_key]['out_dir']
+    return False
+
+
+def write_pm_config(adr_map, app_output_dir, config_lines):
     pm_config_file = "pm_config.h"
-    for partition_name in adr_map.keys():
-        adr_map[partition_name]['pm_config'] = list()
-        lines = adr_map[partition_name]['pm_config']
-        lines.append(get_header_guard_start(pm_config_file))
-        flash_area_id = 0
 
-        lines.append("\n/* Indirect, iterable list of flash areas */")
-        for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['address']):
-            lines.append("#define PM_%d_LABEL %s" % (flash_area_id, area_name.upper()))
-            adr_map[area_name]['flash_area_id'] = flash_area_id
-            flash_area_id += 1
-
-        for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['flash_area_id']):
-            lines.append("#define PM_%s_ID %d" % (area_name.upper(), area_props['flash_area_id']))
-        lines.append("#define PM_NUM %d" % flash_area_id)
-
-        lines.append("\n/* Direct look up list of flash areas */")
-        for area_name, area_props in sorted(adr_map.items(), key=lambda key_value: key_value[1]['address']):
-            lines.append("#define PM_%s_ADDRESS 0x%x" % (area_name.upper(), area_props['address']))
-            lines.append("#define PM_%s_SIZE 0x%x" % (area_name.upper(), area_props['size']))
-            lines.append("#define PM_%s_DEV_NAME \"NRF_FLASH_DRV_NAME\"" % area_name.upper())
-
-        lines.append("#define PM_ADDRESS 0x%x" % adr_map[partition_name]['address'])
-        lines.append("#define PM_SIZE 0x%x" % adr_map[partition_name]['size'])
-
-        lines.append(get_header_guard_end(pm_config_file))
-
+    for area_name, area_props in adr_map.items():
+        area_props['pm_config'] = list.copy(config_lines)
+        area_props['pm_config'].append("#define PM_ADDRESS 0x%x" % area_props['address'])
+        area_props['pm_config'].append("#define PM_SIZE 0x%x" % area_props['size'])
+        area_props['pm_config'].insert(0, get_header_guard_start(pm_config_file))
+        area_props['pm_config'].append(get_header_guard_end(pm_config_file))
+        
     # Store complete size/address configuration to all input paths
     for area_name, area_props in adr_map.items():
         if 'out_dir' in area_props.keys():
             write_pm_config_to_file(path.join(area_props['out_dir'], pm_config_file), area_props['pm_config'])
 
-    # Store to root app
-    write_pm_config_to_file(path.join(app_output_dir, pm_config_file), adr_map['app']['pm_config'])
+    # Store to root app, but
+    if not only_sub_image_is_being_built(adr_map, app_output_dir):
+        write_pm_config_to_file(path.join(app_output_dir, pm_config_file), adr_map['app']['pm_config'])
 
 
 def write_pm_config_to_file(pm_config_file_path, pm_config):
     with open(pm_config_file_path, 'w') as out_file:
         out_file.write('\n'.join(pm_config))
+
+
+def write_kconfig_file(adr_map, app_output_dir, config_lines):
+    pm_kconfig_file = "pm.config"
+    # Store complete size/address configuration to all input paths
+    for area_name, area_props in adr_map.items():
+        if 'out_dir' in area_props.keys():
+            write_pm_config_to_file(path.join(area_props['out_dir'], pm_kconfig_file), config_lines)
+
+    # Store to root app
+    write_pm_config_to_file(path.join(app_output_dir, pm_kconfig_file), config_lines)
 
 
 def parse_args():
@@ -279,7 +306,11 @@ def main():
 
     if args.input is not None:
         pm_config = get_pm_config(args.input)
-        write_pm_config(pm_config, args.app_pm_config_dir)
+
+        pm_config_format_header = get_config_lines(pm_config, "#define ", " ")
+        write_pm_config(pm_config, args.app_pm_config_dir, pm_config_format_header)
+        pm_config_format_kconfig = get_config_lines(pm_config, "", "=")
+        write_kconfig_file(pm_config, args.app_pm_config_dir, pm_config_format_kconfig)
     else:
         print("No input, running tests.")
         test()

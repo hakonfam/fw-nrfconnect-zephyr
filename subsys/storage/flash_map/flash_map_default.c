@@ -13,7 +13,7 @@
  * DeviceTree information when we are using the Partition Manager.
  */
 
-#ifdef USE_PARTITION_MANAGER
+#if USE_PARTITION_MANAGER
 #include <pm_config.h>
 #include <misc/util.h>
 

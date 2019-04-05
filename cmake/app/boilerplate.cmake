@@ -243,8 +243,11 @@ if(FIRST_BOILERPLATE_EXECUTION)
     find_appropriate_cache_directory(USER_CACHE_DIR)
   endif()
   message(STATUS "Cache files will be written to: ${USER_CACHE_DIR}")
-  # Create dummy target for use with partition manager.
-  add_custom_target(PARTITION_MANAGER_TARGET)
+
+  # Add target used for generator expressions.
+  # This is needed in order to express arbitrary variable values as a 
+  # generator expression.
+  add_custom_target(gen_expr)
 else() # NOT FIRST_BOILERPLATE_EXECUTION
 
   # Have the child image select the same BOARD that was selected by
@@ -537,6 +540,21 @@ if(CONFIG_QEMU_TARGET)
   endif()
 endif()
 
+# This needs to be before adding ZEPHYR_BASE subdirectory
+# sice PARTITION_MANAGER_CONFIG_FILES is checked there.
+if(EXISTS ${APPLICATION_SOURCE_DIR}/pm.yml)
+  set(pre_partition_mananger_conf
+    ${PROJECT_BINARY_DIR}/include/generated)
+  file(COPY ${APPLICATION_SOURCE_DIR}/pm.yml
+      DESTINATION
+      ${pre_partition_mananger_conf})
+  set_property(
+    GLOBAL APPEND PROPERTY
+    PARTITION_MANAGER_CONFIG_FILES
+    ${pre_partition_mananger_conf}/pm.yml
+    )
+endif()
+
 # "app" is a CMake library containing all the application code and is
 # modified by the entry point ${APPLICATION_SOURCE_DIR}/CMakeLists.txt
 # that was specified when cmake was called.
@@ -545,77 +563,42 @@ set_property(TARGET ${IMAGE}app PROPERTY ARCHIVE_OUTPUT_DIRECTORY ${IMAGE}app)
 
 add_subdirectory(${ZEPHYR_BASE} ${__build_dir})
 
-if(EXISTS ${APPLICATION_SOURCE_DIR}/pm.yml)
-  zephyr_get_include_directories_for_lang(C current_includes)
-  get_property(current_defines GLOBAL PROPERTY PROPERTY_LINKER_SCRIPT_DEFINES)
-  set(pre_partition_mananger_conf
-    ${PROJECT_BINARY_DIR}/include/generated/pm.yml.pre)
-  set(partition_manager_conf_target ${IMAGE}pm_conf_target)
-  add_custom_command(
-    OUTPUT ${pre_partition_mananger_conf}
-    COMMAND ${CMAKE_C_COMPILER}
-    -x assembler-with-cpp
-    ${NOSTDINC_F}
-    ${NOSYSDEF_CFLAG}
-    ${current_includes}
-    ${current_defines}
-    -E ${APPLICATION_SOURCE_DIR}/pm.yml
-    -P # Prevent generation of debug `#line' directives.
-    ${partition_manager_override_include}
-    -o ${pre_partition_mananger_conf}
-    VERBATIM
-    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-    )
-  add_custom_target(
-    ${partition_manager_conf_target}
-    DEPENDS
-    ${pre_partition_mananger_conf}
-    )
-  set_property(
-    GLOBAL APPEND PROPERTY
-    PARTITION_MANAGER_CONFIG_FILES
-    ${pre_partition_mananger_conf}
-    )
-  set_property(
-    GLOBAL APPEND PROPERTY
-    PARTITION_MANAGER_CONFIG_TARGETS
-    ${partition_manager_conf_target}
-    )
-endif()
-
 if(FIRST_BOILERPLATE_EXECUTION)
   get_property(
-      partition_manager_config_files
+    partition_manager_config_files
     GLOBAL PROPERTY
     PARTITION_MANAGER_CONFIG_FILES
     )
-  print(partition_manager_config_files)
   if(partition_manager_config_files)
-    get_property(
-      partition_manager_config_targets
-      GLOBAL PROPERTY
-      PARTITION_MANAGER_CONFIG_TARGETS
-      )
-    add_custom_command(
-      OUTPUT ${PROJECT_BINARY_DIR}/include/generated/pm_config.h
+    set(pm_cmd
       COMMAND
       ${PYTHON_EXECUTABLE}
       ${ZEPHYR_BASE}/scripts/partition_manager.py
       --input ${partition_manager_config_files}
       --app-pm-config-dir ${PROJECT_BINARY_DIR}/include/generated
-      DEPENDS
-      ${partition_manager_config_targets}
       )
-    add_custom_target(
-      PARTITION_MANAGER_TARGET_PROPER
-      DEPENDS
-      ${PROJECT_BINARY_DIR}/include/generated/pm_config.h
-      )
-      # For every input_file
+    execute_process(${pm_cmd})
 
-    # Do this to allow PARTITION_MANAGER_TARGET to be depended on in root
-    # CMakeLists.txt
-    add_dependencies(PARTITION_MANAGER_TARGET PARTITION_MANAGER_TARGET_PROPER)
+    # Make Partition Manager configuration available in CMake
+    import_kconfig(PM_ ${PROJECT_BINARY_DIR}/include/generated/pm.config)
+
+    set_property(
+      TARGET gen_expr
+      PROPERTY MCUBOOT_SLOT_SIZE
+      ${PM_MCUBOOT_PARTITIONS_PRIMARY_SIZE})
+    set_property(
+      TARGET gen_expr
+      PROPERTY MCUBOOT_HEADER_SIZE
+      ${PM_MCUBOOT_PAD_SIZE})
+    set_property(
+      TARGET gen_expr
+      PROPERTY PARTITION_MANAGER_ENABLED
+      1)
+  else()
+    set_property(
+      TARGET gen_expr
+      PROPERTY PARTITION_MANAGER_ENABLED
+      0)
   endif()
 endif()
 

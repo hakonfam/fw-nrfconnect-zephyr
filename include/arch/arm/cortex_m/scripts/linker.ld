@@ -39,7 +39,7 @@
   #define SKIP_TO_KINETIS_FLASH_CONFIG
 #endif
 
-#ifdef USE_PARTITION_MANAGER
+#if USE_PARTITION_MANAGER
 #include <pm_config.h>
 #define ROM_ADDR PM_ADDRESS
 #define ROM_SIZE PM_SIZE
