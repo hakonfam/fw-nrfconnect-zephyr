@@ -7,6 +7,8 @@
 import argparse
 import yaml
 import re
+import copy
+from intelhex import IntelHex
 from os import path
 
 
@@ -31,7 +33,10 @@ def remove_irrelevant_requirements(reqs):
 
 
 def get_images_which_needs_resolving(reqs):
-    return [x for x in reqs.keys() if type(reqs[x]['placement']) == dict and ('before' in reqs[x]['placement'].keys() or
+    return [x for x in reqs.keys() if
+            'placement' in reqs[x].keys() and
+            type(reqs[x]['placement']) == dict and
+            ('before' in reqs[x]['placement'].keys() or
             'after' in reqs[x]['placement'].keys())]
 
 
@@ -54,7 +59,10 @@ def solve_direction(reqs, unsolved, solution, ab):
 
 
 def solve_from_last(reqs, unsolved, solution):
-    last = [x for x in reqs.keys() if type(reqs[x]['placement']) == str and reqs[x]['placement'] == 'last']
+    last = [x for x in reqs.keys() if
+            'placement' in reqs[x].keys() and
+            type(reqs[x]['placement']) == str and
+            reqs[x]['placement'] == 'last']
     if last:
         assert(len(last) == 1)
         solution.append(last[0])
@@ -123,11 +131,20 @@ def load_size_config(adr_map):
             adr_map[k]['size'] = size_configs[k]
 
 
-def load_adr_map(adr_map, input_files):
+def load_adr_map(adr_map, input_config):
+    input_files = get_input_files(input_config)
+
+    # First load image configs from pm.yml files.
     for f in input_files:
         img_conf = yaml.safe_load(f)
-
         adr_map.update(img_conf)
+
+    # Now load input configs from included hex files and skipped hex files
+    for name, config in input_config.items():
+        if 'size' in config.keys():
+            adr_map[name] = dict()
+            adr_map[name].update(config)
+
     adr_map['app'] = dict()
     adr_map['app']['placement'] = ''
 
@@ -137,16 +154,18 @@ def set_addresses(reqs, solution, flash_size):
     reqs[solution[0]]['address'] = 0
     for i in range(1, solution.index('app') + 1):
         current = solution[i]
-        previous = solution[i - 1]
-        reqs[current]['address'] = reqs[previous]['address'] + reqs[previous]['size']
+        if 'address' not in reqs[current].keys():
+            previous = solution[i - 1]
+            reqs[current]['address'] = reqs[previous]['address'] + reqs[previous]['size']
 
     has_image_after_app = len(solution) > solution.index('app') + 1
     if has_image_after_app:
         reqs[solution[-1]]['address'] = flash_size - reqs[solution[-1]]['size']
         for i in range(len(solution) - 2, solution.index('app'), -1):
             current = solution[i]
-            previous = solution[i + 1]
-            reqs[current]['address'] = reqs[previous]['address'] - reqs[current]['size']
+            if 'address' not in reqs[current].keys():
+                previous = solution[i + 1]
+                reqs[current]['address'] = reqs[previous]['address'] - reqs[current]['size']
         reqs['app']['size'] = reqs[solution[solution.index('app') + 1]]['address'] - reqs['app']['address']
     else:
         reqs['app']['size'] = flash_size - reqs['app']['address']
@@ -186,20 +205,25 @@ def get_flash_size(adr_map):
 def get_input_files(input_config):
     input_files = list()
     for k, v in input_config.items():
-        input_files.append(open(v['pm.yml'], 'r'))
+        # Configurations can also be loaded from included hex files,
+        # or hard coded values in the case of skipped hex files
+        if 'pm.yml' in v.keys():
+            input_files.append(open(v['pm.yml'], 'r'))
     return input_files
 
 
 def add_configurations(adr_map, input_config):
     for k, v in input_config.items():
-        adr_map[k]['out_dir'] = v['out_dir']
-        adr_map[k]['build_dir'] = v['build_dir']
+        # Configurations can also be loaded from included hex files,
+        # or hard coded values in the case of skipped hex files
+        if 'out_dir' in v.keys():
+            adr_map[k]['out_dir'] = v['out_dir']
+            adr_map[k]['build_dir'] = v['build_dir']
 
 
 def get_pm_config(input_config):
     adr_map = dict()
-    input_files = get_input_files(input_config)
-    load_adr_map(adr_map, input_files)
+    load_adr_map(adr_map, input_config)
     add_configurations(adr_map, input_config)
     load_size_config(adr_map)
     flash_size = get_flash_size(adr_map)
@@ -318,6 +342,12 @@ This file contains all addresses and sizes of all partitions.
                              "image-name:pm.yml-path:build_dir:out_dir")
     parser.add_argument("--app-pm-config-dir", required=True,
                         help="Where to store the 'pm_config.h' of the root app.")
+    parser.add_argument("--included-hex-files", nargs="*", required=False,
+                        help="Space separated list of hex file configurations. Each hex file configuration is in the"
+                             "format name:hex_file_path.")
+    parser.add_argument("--skipped-hex-file-configs", nargs="*", required=False,
+                        help="Space separated list of skipped hex file configs. Each configuration is in the format "
+                             "name:start_address:size")
 
     args = parser.parse_args()
 
@@ -334,6 +364,30 @@ def main():
             input_config[split[0]]['pm.yml'] = split[1]
             input_config[split[0]]['build_dir'] = split[2]
             input_config[split[0]]['out_dir'] = split[3]
+
+        if args.included_hex_files:
+            for i in args.included_hex_files:
+                split = i.split(':')
+                input_config[split[0]] = dict()
+                input_config[split[0]]['placement'] = dict()
+                relative = split[1].split('-')[0]
+                image = split[1].split('-')[1]
+                input_config[split[0]]['placement'][relative] = [image]
+                h = IntelHex(split[2])
+                input_config[split[0]]['address'] = h.start_addr
+                input_config[split[0]]['size'] = h.maxaddr() - h.minaddr()
+
+        if args.skipped_hex_file_configs:
+            for i in args.skipped_hex_file_configs:
+                split = i.split(':')
+                input_config[split[0]] = dict()
+                input_config[split[0]]['placement'] = dict()
+                relative = split[1].split('-')[0]
+                image = split[1].split('-')[1]
+                input_config[split[0]]['placement'][relative] = [image]
+                input_config[split[0]]['address'] = int(split[2], 16)
+                input_config[split[0]]['size'] = int(split[3], 16)
+
         pm_config = get_pm_config(input_config)
         write_pm_config(pm_config, args.app_pm_config_dir)
         write_kconfig_file(pm_config, args.app_pm_config_dir)

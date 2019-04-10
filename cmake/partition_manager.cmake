@@ -10,14 +10,28 @@ if(FIRST_BOILERPLATE_EXECUTION)
     GLOBAL PROPERTY
     PARTITION_MANAGER_CONFIG_FILES
     )
+  get_property(
+    included_hex_files
+    GLOBAL PROPERTY
+    INCLUDED_HEX_FILES)
+  get_property(
+    skipped_hex_file_configs
+    GLOBAL PROPERTY
+    SKIPPED_HEX_FILES_CONFIG)
   if(partition_manager_config_files)
-    execute_process(
+
+    set(lol
       COMMAND
       ${PYTHON_EXECUTABLE}
       ${ZEPHYR_BASE}/scripts/partition_manager.py
       --input ${partition_manager_config_files}
       --app-pm-config-dir ${PROJECT_BINARY_DIR}/include/generated
+      --included-hex-files ${included_hex_files}
+      --skipped-hex-file-configs ${skipped_hex_file_configs}
       )
+    print(lol)
+    execute_process(
+      lol)
 
     # Make Partition Manager configuration available in CMake
     import_kconfig(PM_ ${PROJECT_BINARY_DIR}/include/generated/pm.config)

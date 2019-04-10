@@ -138,7 +138,16 @@ function(zephyr_add_executable name output_variable)
       ${CONFIG_${UPNAME}_HEX_FILE}
       ${APPLICATION_BINARY_DIR}/zephyr/${KERNEL_HEX_NAME}
       )
+    set_property(GLOBAL APPEND PROPERTY
+      INCLUDED_HEX_FILES
+      ${name}:${CONFIG_${UPNAME}_BUILD_STRATEGY_PLACEMENT}:${CONFIG_${UPNAME}_HEX_FILE}
+      )
+
   elseif (CONFIG_${UPNAME}_BUILD_STRATEGY_SKIP_BUILD)
+    set_property(GLOBAL APPEND PROPERTY
+      SKIPPED_HEX_FILES_CONFIG
+      ${name}:${CONFIG_${UPNAME}_BUILD_STRATEGY_PLACEMENT}:${CONFIG_${UPNAME}_BUILD_STRATEGY_SKIP_ADDRESS}:${CONFIG_${UPNAME}_BUILD_STRATEGY_SKIP_SIZE}
+      )
     message("Skipping building of ${name}")
   else()
     # Build normally

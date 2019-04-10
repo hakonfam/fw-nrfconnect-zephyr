@@ -1,0 +1,20 @@
+mcuboot:
+  placement:
+    # MCUboot must be placed in front of 'mcuboot_pad'.
+    before: [mcuboot_pad]
+  size: 0xc000
+  address: 0
+
+mcuboot_scratch:
+  placement:
+    after: [app]
+  size: 0x200
+  address: 0xFE000
+
+mcuboot_storage:
+  placement:
+    after: [mcuboot_scratch]
+
+mcuboot_pad:
+  placement:
+    before: [spm, app]
