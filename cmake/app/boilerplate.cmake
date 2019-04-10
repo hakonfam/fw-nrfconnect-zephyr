@@ -244,10 +244,6 @@ if(FIRST_BOILERPLATE_EXECUTION)
   endif()
   message(STATUS "Cache files will be written to: ${USER_CACHE_DIR}")
 
-  # Add target used for generator expressions.
-  # This is needed in order to express arbitrary variable values as a 
-  # generator expression.
-  add_custom_target(gen_expr)
 else() # NOT FIRST_BOILERPLATE_EXECUTION
 
   # Have the child image select the same BOARD that was selected by
