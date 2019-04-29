@@ -41,7 +41,6 @@ def remove_irrelevant_requirements(reqs):
                     del reqs[x]['placement'][before_after]
 
 
-
 def outermost(reqs, elem):
     comparison = 0
     while 'inside' in elem.keys() and elem['inside'][0] in reqs.keys():
@@ -81,10 +80,12 @@ def solve_direction(reqs, sub_partitions, unsolved, solution, ab):
         if depends:
             # Place based on current, or based on the first/last element in the span of current.
             if ab == 'before':
-                anchor = current if current in solution else next(solved for solved in solution if solved in sub_partitions[current]['span'])
+                anchor = current if current in solution else next(solved for solved in solution
+                                                                  if solved in sub_partitions[current]['span'])
                 solution.insert(solution.index(anchor), depends[0])
             else:
-                anchor = current if current in solution else next(solved for solved in reversed(solution) if solved in sub_partitions[current]['span'])
+                anchor = current if current in solution else next(solved for solved in reversed(solution)
+                                                                  if solved in sub_partitions[current]['span'])
                 solution.insert(solution.index(anchor) + 1, depends[0])
             unsolved.remove(depends[0])
             current = depends[0]
@@ -97,13 +98,13 @@ def solve_direction(reqs, sub_partitions, unsolved, solution, ab):
 
 def solve_first_last(reqs, unsolved, solution):
     for fl in ['first', 'last']:
-        first_or_last = [x for x in reqs.keys() if 'placement' in reqs[x] and type(reqs[x]['placement']) == str and reqs[x]['placement'] == fl]
+        first_or_last = [x for x in reqs.keys() if 'placement' in reqs[x] and type(reqs[x]['placement']) == str and
+                         reqs[x]['placement'] == fl]
         if first_or_last:
             assert(len(first_or_last) == 1)
             solution.insert(0 if fl is 'first' else len(solution), first_or_last[0])
             if first_or_last[0] in unsolved:
                 unsolved.remove(first_or_last[0])
-
 
 
 def extract_sub_partitions(reqs):
@@ -128,7 +129,7 @@ def extract_sub_partitions(reqs):
                     if 'span' in reqs[part].keys():
                         value['span'].extend(reqs[part]['span'])
                         value['span'].remove(part)
-                        value['span'] = list(set(value['span'])) # remove duplicates
+                        value['span'] = list(set(value['span']))  # remove duplicates
                         done = False
 
     for key in keys_to_delete:
@@ -151,10 +152,11 @@ def resolve(reqs):
     # Validate partition spanning.
     for sub in sub_partitions:
         indices = [solution.index(part) for part in sub_partitions[sub]['span']]
-        assert ((not indices) or (max(indices) - min(indices) + 1 == len(indices))),\
-                "partition %s (%s) does not span over consecutive parts. Solution: %s" % (sub, str(sub_partitions[sub]['span']), str(solution))
-        assert all(part in solution for part in sub_partitions[sub]['span']),\
-                "Some or all parts of partition %s have not been placed."
+        assert ((not indices) or (max(indices) - min(indices) + 1 == len(indices))), \
+            "partition %s (%s) does not span over consecutive parts. Solution: %s" % \
+            (sub, str(sub_partitions[sub]['span']), str(solution))
+        assert all(part in solution for part in sub_partitions[sub]['span']), \
+            "Some or all parts of partition %s have not been placed."
 
     return solution, sub_partitions
 
@@ -197,7 +199,6 @@ def load_adr_map(adr_map, input_files):
 def app_size(reqs, total_size):
     size = total_size - sum([req['size'] for name, req in reqs.items() if 'size' in req.keys() and name is not 'app'])
     return size
-
 
 
 def set_addresses(reqs, sub_partitions, solution, flash_size):
@@ -306,13 +307,12 @@ def add_configurations(adr_map, input_config):
 
 
 def print_region(region, size, reqs, solution):
-    print ("%s (0x%x)" % (region, size))
+    print("%s (0x%x)" % (region, size))
     sizes = ["0x%x: %s (0x%x)" % (reqs[part]['address'], part, reqs[part]['size']) for part in solution]
     maxlen = max(map(len, sizes))
-    print ("+%s+" % ("-"*(maxlen+2)))
+    print("+%s+" % ("-"*(maxlen+2)))
     list(map(lambda s: print('| %s |' % s.ljust(maxlen)), sizes))
-    print ("+%s+" % ("-"*(maxlen+2)))
-
+    print("+%s+" % ("-"*(maxlen+2)))
 
 
 def get_pm_config(input_config):
@@ -461,11 +461,15 @@ def main():
         print("No input, running tests.")
         test()
 
+
 def expect_addr_size(td, name, expected_address, expected_size):
-    if expected_size != None:
-        assert td[name]['size'] == expected_size, "Size of %s was %d, expected %d" % (name, td[name]['size'], expected_size)
-    if expected_address != None:
-        assert td[name]['address'] == expected_address, "Address of %s was %d, expected %d" % (name, td[name]['address'], expected_address)
+    if expected_size:
+        assert td[name]['size'] == expected_size, "Size of %s was %d, expected %d" % \
+                                                  (name, td[name]['size'], expected_size)
+    if expected_address:
+        assert td[name]['address'] == expected_address, "Address of %s was %d, expected %d" % \
+                                                        (name, td[name]['address'], expected_address)
+
 
 def test():
     td = {'spm': {'placement': {'before': ['app']}, 'size': 100},
@@ -491,7 +495,6 @@ def test():
     expect_addr_size(td, 'app', 200, 800)
     expect_addr_size(td, 'mcuboot_partitions_primary', 200, 400)
     expect_addr_size(td, 'mcuboot_partitions_secondary', 600, 400)
-
 
     td = {'spm': {'placement': {'before': ['app']}, 'size': 100, 'inside': ['mcuboot_slot0']},
           'mcuboot': {'placement': {'before': ['app']}, 'size': 200},
@@ -577,7 +580,8 @@ def test():
     expect_addr_size(td, 'app', 250, 650)
     expect_addr_size(td, 'provision', 900, None)
 
-    print ("All tests passed!")
+    print("All tests passed!")
+
 
 if __name__ == "__main__":
     main()
