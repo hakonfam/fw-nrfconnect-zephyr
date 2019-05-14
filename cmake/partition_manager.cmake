@@ -11,9 +11,16 @@ if(FIRST_BOILERPLATE_EXECUTION)
     PARTITION_MANAGER_CONFIG_FILES
     )
 
-  if(partition_manager_config_files)
+  set(partitions_yml ${APPLICATION_SOURCE_DIR}/partitions.yml)
+
+  if(partition_manager_config_files OR (EXISTS ${partitions_yml}))
     # Partition manager is enabled because we have populated config
-    # files.
+    # files or because the application has pointet to pre defined partition
+    # configurations.
+
+    if (EXISTS ${partitions_yml})
+      set(pre_defined_conf --pre-defined-config ${partitions_yml})
+    endif()
 
     execute_process(
       COMMAND
@@ -22,6 +29,7 @@ if(FIRST_BOILERPLATE_EXECUTION)
       --input ${partition_manager_config_files}
       --app-pm-config-dir ${PROJECT_BINARY_DIR}/include/generated
       --app-build-dir ${PROJECT_BINARY_DIR}
+      ${pre_defined_conf}
       RESULT_VARIABLE ret
       )
 

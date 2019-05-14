@@ -195,13 +195,13 @@ def app_size(reqs, total_size):
     return size
 
 
-def set_addresses(reqs, sub_partitions, solution, flash_size):
+def set_addresses(reqs, sub_partitions, solution, flash_size, pre_defined_start=None):
     set_shared_size(reqs, sub_partitions, flash_size)
 
     reqs['app']['size'] = app_size(reqs, flash_size)
 
     # First image starts at 0
-    reqs[solution[0]]['address'] = 0
+    reqs[solution[0]]['address'] = 0 if not pre_defined_start else pre_defined_start
     for i in range(1, len(solution)):
         current = solution[i]
         previous = solution[i - 1]
@@ -262,14 +262,67 @@ def get_flash_size(reqs):
     return get_config(reqs, "CONFIG_FLASH_SIZE")
 
 
-def get_pm_config(input_config):
-    reqs = dict()
-    load_reqs(reqs, input_config)
-    flash_size = get_flash_size(input_config)
-    solution, sub_partitions = resolve(reqs)
-    set_addresses(reqs, sub_partitions, solution, flash_size)
-    set_sub_partition_address_and_size(reqs, sub_partitions)
-    return reqs
+def get_pre_defined_start_size(pre_defined_config, flash_size):
+    pre_defined_start = None
+    pre_defined_size = None
+
+    # Remove app from this dict to simplify the case where partitions before and after are removed.
+    proper_partitions = {x: pre_defined_config[x] for x in pre_defined_config.keys()
+                         if 'span' not in pre_defined_config[x].keys() and x != 'app'}
+    sorted_partition_keys = sorted(proper_partitions, key=lambda p: proper_partitions[p]['address'])
+
+    if len(sorted_partition_keys) == 1:
+        current = proper_partitions[sorted_partition_keys[0]]
+        if current['address'] == 0:
+            # Use all area after partition, app is after current, and expands to the end.
+            return current['size'], flash_size - current['size']
+        else:
+            # Use all area in front of partition
+            return 0, current['address']
+
+    for i in range(1, len(sorted_partition_keys)):  # First starts at 0
+        current = proper_partitions[sorted_partition_keys[i]]
+        previous = proper_partitions[sorted_partition_keys[i - 1]]
+        previous_end = previous['address'] + previous['size']
+        if current['address'] != previous_end:
+            pre_defined_start = previous_end
+            pre_defined_size = current['address'] - previous_end
+            break
+        if i == len(sorted_partition_keys) - 1:
+            # This is the last partition to check, which means that the app was the last partition
+            # The gap is behind the current partition
+            pre_defined_start = current['address'] + current['size']
+            pre_defined_size = flash_size - pre_defined_start
+
+    if not pre_defined_size or not pre_defined_start:
+        raise RuntimeError("Unable to deduce pre defined start and/or size")
+
+    return pre_defined_start, pre_defined_size
+
+
+def get_pm_config(input_config, pre_defined_config):
+    to_resolve = dict()
+    pre_defined_size = None
+    pre_defined_start = None
+
+    load_reqs(to_resolve, input_config)
+    flash_size = get_flash_size(input_config) if not pre_defined_size else pre_defined_size
+
+    if pre_defined_config:
+        pre_defined_start, pre_defined_size = get_pre_defined_start_size(pre_defined_config, flash_size)
+        to_resolve = {x: to_resolve[x] for x in to_resolve if x not in pre_defined_config.keys() or x == 'app'}
+        # If nothing is unresolved (only app remaining), simply return the pre defined config
+        if len(to_resolve) == 1:
+            return pre_defined_config
+
+    solution, sub_partitions = resolve(to_resolve)
+    set_addresses(to_resolve, sub_partitions, solution, flash_size, pre_defined_start)
+    set_sub_partition_address_and_size(to_resolve, sub_partitions)
+
+    if pre_defined_config:
+        # Merge the results, take the new 'app' as that has the correct size.
+        to_resolve.update({x: pre_defined_config[x] for x in pre_defined_config.keys() if x != 'app'})
+    return to_resolve
 
 
 def get_header_guard_start(filename):
@@ -357,7 +410,7 @@ This file contains all addresses and sizes of all partitions.
 
 "pm_config.h" is in the same folder as the given 'pm.yml' file.''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("-i", "--input", required=True, type=str, nargs="+",
+    parser.add_argument("-i", "--input", required=True, type=str, nargs="*",
                         help="Space separated list of configs."
                              "Each config is a ':' - separated list of the following properties:"
                              "image-name:pm.yml-path:build_dir:out_dir")
@@ -365,6 +418,7 @@ This file contains all addresses and sizes of all partitions.
                         help="Where to store the 'pm_config.h' of the root app.")
     parser.add_argument("--app-build-dir", required=True,
                         help="Path to of the root app's build directory.")
+    parser.add_argument("-p", "--pre-defined-config", required=False, type=argparse.FileType(mode='r'))
 
     return parser.parse_args()
 
@@ -386,7 +440,7 @@ def main():
     if len(sys.argv) > 1:
         args = parse_args()
         input_config = get_input_config(args)
-        pm_config = get_pm_config(input_config)
+        pm_config = get_pm_config(input_config, yaml.safe_load(args.pre_defined_config))
         write_pm_config(pm_config, input_config)
         write_kconfig_file(pm_config, input_config)
         write_yaml_out_file(pm_config, input_config, "partitions.yml")
@@ -405,6 +459,43 @@ def expect_addr_size(td, name, expected_address, expected_size):
 
 
 def test():
+    test_config = {
+        'first': {'address': 0,    'size': 10},
+        # Gap from deleted partition.
+        'app':   {'address': 20, 'size': 10},
+        # Gap from deleted partition.
+        'fourth': {'address': 40, 'size': 10}}
+    start, size = get_pre_defined_start_size(test_config, 100)
+    assert(start == 10)
+    assert(size == 40-10)
+
+    test_config = {
+        'first':  {'address': 0,    'size': 10},
+        'second': {'address': 10, 'size': 10},
+        'app':    {'address': 20, 'size': 80}
+        # Gap from deleted partition.
+    }
+
+    start, size = get_pre_defined_start_size(test_config, 100)
+    assert(start == 20)
+    assert(size == 80)
+
+    test_config = {
+        'app':    {'address': 0,    'size': 10},
+        # Gap from deleted partition.
+        'second': {'address': 40, 'size': 10}}
+    start, size = get_pre_defined_start_size(test_config, 100)
+    assert(start == 0)
+    assert(size == 40)
+
+    test_config = {
+        'first': {'address': 0,    'size': 10},
+        # Gap from deleted partition.
+        'app':   {'address': 20, 'size': 10}}
+    start, size = get_pre_defined_start_size(test_config, 100)
+    assert (start == 10)
+    assert (size == 100 - 10)
+
     td = {'spm': {'placement': {'before': ['app']}, 'size': 100},
           'mcuboot': {'placement': {'before': ['spm', 'app']}, 'size': 200},
           'app': {}}
