@@ -263,41 +263,19 @@ def get_flash_size(reqs):
 
 
 def get_pre_defined_start_size(pre_defined_config, flash_size):
-    pre_defined_start = None
-    pre_defined_size = None
-
     # Remove app from this dict to simplify the case where partitions before and after are removed.
-    proper_partitions = {x: pre_defined_config[x] for x in pre_defined_config.keys()
-                         if 'span' not in pre_defined_config[x].keys() and x != 'app'}
-    sorted_partition_keys = sorted(proper_partitions, key=lambda p: proper_partitions[p]['address'])
+    proper_partitions = [config for name, config in pre_defined_config.items()
+                         if 'span' not in config.keys() and name != 'app']
 
-    if len(sorted_partition_keys) == 1:
-        current = proper_partitions[sorted_partition_keys[0]]
-        if current['address'] == 0:
-            # Use all area after partition, app is after current, and expands to the end.
-            return current['size'], flash_size - current['size']
-        else:
-            # Use all area in front of partition
-            return 0, current['address']
+    starts = {flash_size} | {config['address'] for config in proper_partitions}
+    ends = {0} | {config['address'] + config['size'] for config in proper_partitions}
+    gaps = list(zip(sorted(ends - starts), sorted(starts - ends)))
 
-    for i in range(1, len(sorted_partition_keys)):  # First starts at 0
-        current = proper_partitions[sorted_partition_keys[i]]
-        previous = proper_partitions[sorted_partition_keys[i - 1]]
-        previous_end = previous['address'] + previous['size']
-        if current['address'] != previous_end:
-            pre_defined_start = previous_end
-            pre_defined_size = current['address'] - previous_end
-            break
-        if i == len(sorted_partition_keys) - 1:
-            # This is the last partition to check, which means that the app was the last partition
-            # The gap is behind the current partition
-            pre_defined_start = current['address'] + current['size']
-            pre_defined_size = flash_size - pre_defined_start
+    assert len(gaps) >= 1, "No gaps found in the predefined config."
+    assert len(gaps) <= 1, "More than one gap found in the predefined config: %s" % str(gaps)
 
-    if not pre_defined_size or not pre_defined_start:
-        raise RuntimeError("Unable to deduce pre defined start and/or size")
-
-    return pre_defined_start, pre_defined_size
+    start, end = gaps[0]
+    return start, end-start
 
 
 def get_pm_config(input_config, pre_defined_config):
@@ -464,7 +442,7 @@ def test():
         # Gap from deleted partition.
         'app':   {'address': 20, 'size': 10},
         # Gap from deleted partition.
-        'fourth': {'address': 40, 'size': 10}}
+        'fourth': {'address': 40, 'size': 60}}
     start, size = get_pre_defined_start_size(test_config, 100)
     assert(start == 10)
     assert(size == 40-10)
@@ -483,7 +461,7 @@ def test():
     test_config = {
         'app':    {'address': 0,    'size': 10},
         # Gap from deleted partition.
-        'second': {'address': 40, 'size': 10}}
+        'second': {'address': 40, 'size': 60}}
     start, size = get_pre_defined_start_size(test_config, 100)
     assert(start == 0)
     assert(size == 40)
