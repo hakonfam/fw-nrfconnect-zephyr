@@ -1275,7 +1275,7 @@ if (IMAGE STREQUAL mcuboot_ AND CONFIG_MCUBOOT_BUILD_S1_VARIANT)
     )
 
   # Link against linker script with updated offset.
-  set(MCUBOOT_S1_EXECUTABLE s1_mcuboot)
+  set(MCUBOOT_S1_EXECUTABLE s1_image)
   add_executable(${MCUBOOT_S1_EXECUTABLE} ${ZEPHYR_BASE}/misc/empty_file.c)
   toolchain_ld_link_elf(
     TARGET_ELF            ${MCUBOOT_S1_EXECUTABLE}
@@ -1307,7 +1307,7 @@ if (IMAGE STREQUAL mcuboot_ AND CONFIG_MCUBOOT_BUILD_S1_VARIANT)
     OUTPUT ${MCUBOOT_S1_EXECUTABLE}.hex)
 
   add_custom_target(
-    s1_mcuboot_hex
+    s1_image_hex
     DEPENDS
     ${MCUBOOT_S1_EXECUTABLE}.hex
     )
