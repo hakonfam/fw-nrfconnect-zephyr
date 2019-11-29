@@ -1256,6 +1256,8 @@ if (CONFIG_MCUBOOT AND CONFIG_MCUBOOT_BUILD_S1_VARIANT)
 # most of the variables requried for compiling/linking is only available
 # in the scope of this file.
 
+  get_domain(${BOARD} domain)
+
   # Create linker script which has an offset from S0 to S1.
   configure_linker_script(
     linker_mcuboot_s1.cmd

@@ -63,6 +63,18 @@ set(__build_dir ${CMAKE_CURRENT_BINARY_DIR}/zephyr)
 
 set(PROJECT_BINARY_DIR ${__build_dir})
 
+function(get_domain board domain_out)
+  string(REGEX MATCH "(.*)ns$" unused_out_var ${board})
+  if (CMAKE_MATCH_1)
+    set(${domain_out} ${CMAKE_MATCH_1} PARENT_SCOPE)
+  else()
+    set(${domain_out} ${board} PARENT_SCOPE)
+  endif()
+endfunction()
+
+get_domain(${BOARD} domain)
+set_property(GLOBAL PROPERTY ${domain}_${IMAGE}PROJECT_BINARY_DIR ${PROJECT_BINARY_DIR})
+
 add_custom_target(code_data_relocation_target)
 
 # CMake's 'project' concept has proven to not be very useful for Zephyr

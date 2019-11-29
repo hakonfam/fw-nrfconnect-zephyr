@@ -3,6 +3,14 @@
 # Copyright (c) 2016-2017 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
+menu "HCI RPMSG"
+
+config HCI_RPMSG
+	bool "Use HCI RPMSG"
+
+endmenu
+
+
 comment "BLE Controller support"
 
 # The following symbols are enabled depending if the controller actually
