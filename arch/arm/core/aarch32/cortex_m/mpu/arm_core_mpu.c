@@ -62,7 +62,7 @@ LOG_MODULE_REGISTER(mpu);
 void z_arm_configure_static_mpu_regions(void)
 {
 #if defined(CONFIG_COVERAGE_GCOV) && defined(CONFIG_USERSPACE)
-i		const struct k_mem_partition gcov_region =
+		const struct k_mem_partition gcov_region =
 		{
 		.start = (u32_t)&__gcov_bss_start,
 		.size = (u32_t)&__gcov_bss_size,
@@ -85,15 +85,6 @@ i		const struct k_mem_partition gcov_region =
 		.attr = K_MEM_PARTITION_P_RX_U_RX,
 		};
 #endif /* CONFIG_ARCH_HAS_RAMFUNC_SUPPORT */
-#if defined(CONFIG_FLASH_WRITEABLE_AREA)
-#include <pm_config.h>
-		const struct k_mem_partition mcuboot_region =
-		{
-		.start = PM_ADDRESS,
-		.size = PM_SIZE,
-		.attr = K_MEM_PARTITION_P_RX_U_RX,
-		};
-#endif
 
 	/* Define a constant array of k_mem_partition objects
 	 * to hold the configuration of the respective static

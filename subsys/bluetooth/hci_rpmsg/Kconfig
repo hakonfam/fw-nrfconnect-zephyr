@@ -1,9 +1,0 @@
-menu "HCI RPMSG"
-
-config HCI_RPMSG
-	bool "Use HCI RPMSG"
-
-#if HCI_RPMSG
-#module=HCI_RPMSG
-#source "${ZEPHYR_BASE}/../nrf/subsys/partition_manager/Kconfig.template.build_strategy"
-#endif
