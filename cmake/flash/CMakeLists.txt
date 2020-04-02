@@ -1,5 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
+add_custom_target(flash_runner_property_target)
+
+function(write content)
+  set_property(
+    TARGET         flash_runner_property_target
+    APPEND_STRING
+    PROPERTY       yaml_contents
+    "${content}\n"
+    )
+endfunction()
+
 # Save runner state in a YAML file, and put that YAML file's location
 # in the cache.
 function(create_runners_yaml)
@@ -7,87 +18,63 @@ function(create_runners_yaml)
 
   set(runners_yaml "${PROJECT_BINARY_DIR}/runners.yaml")
 
-  set(yaml_contents "# Available runners configured by board.cmake.
-runners:
-")
+  write("# Available runners configured by board.cmake.\nrunners:")
   foreach(runner ${runners})
-    string(APPEND yaml_contents "\
-- ${runner}
-")
+    write("- ${runner}")
   endforeach()
 
   if(DEFINED BOARD_FLASH_RUNNER)
-    string(APPEND yaml_contents "\
-
-# Default flash runner if --runner is not given.
-flash-runner: ${BOARD_FLASH_RUNNER}
-")
+    write("\n# Default flash runner if --runner is not given.")
+    write("flash-runner: ${BOARD_FLASH_RUNNER}")
   endif()
   if(DEFINED BOARD_DEBUG_RUNNER)
-    string(APPEND yaml_contents "\
-
-# Default debug runner if --runner is not given.
-debug-runner: ${BOARD_DEBUG_RUNNER}
-")
+    write("\n# Default debug runner if --runner is not given.")
+    write("debug-runner: ${BOARD_DEBUG_RUNNER}")
   endif()
 
-  string(APPEND yaml_contents "\
-
-# Default command line arguments. The ones in \"common\" are always given.
-# The other sub-keys give runner-specific arguments.
-args:
-  common:
-")
+  write("\n# Default command line arguments. The ones in \"common\" are always given.\n# The other sub-keys give runner-specific arguments.")
+  write("args:\n  common:")
 
   # Get default settings for common arguments.
   #
   # TODO: clean up the host tools arguments. These are really runner
   # specific; they only continue to exist here out of inertia.
-  string(APPEND yaml_contents "\
+
+  write("\
   - --board-dir=${BOARD_DIR}
   - --elf-file=${PROJECT_BINARY_DIR}/${KERNEL_ELF_NAME}
   - --hex-file=${PROJECT_BINARY_DIR}/${KERNEL_HEX_NAME}
-  - --bin-file=${PROJECT_BINARY_DIR}/${KERNEL_BIN_NAME}
-")
+  - --bin-file=${PROJECT_BINARY_DIR}/${KERNEL_BIN_NAME}")
   if (DEFINED CMAKE_GDB)
-    string(APPEND yaml_contents "\
-  - --gdb=${CMAKE_GDB}
-")
+    write("  - --gdb=${CMAKE_GDB}")
   endif()
   if (DEFINED OPENOCD)
-    string(APPEND yaml_contents "\
-  - --openocd=${OPENOCD}
-")
+    write("  - --openocd=${OPENOCD}")
   endif()
   if(DEFINED OPENOCD_DEFAULT_PATH)
-    string(APPEND yaml_contents "\
-  - --openocd-search=${OPENOCD_DEFAULT_PATH}
-")
+    write("  - --openocd-search=${OPENOCD_DEFAULT_PATH}")
   endif()
 
   # Get runner-specific arguments set in the board files.
   foreach(runner ${runners})
     string(MAKE_C_IDENTIFIER ${runner} runner_id)
-    string(APPEND yaml_contents "\
-  ${runner}:")
+    write("  ${runner}:")
     get_property(args GLOBAL PROPERTY "BOARD_RUNNER_ARGS_${runner_id}")
     if(args)
       # Usually, the runner has arguments. Append them to runners.yaml,
       # one per line.
-      string(APPEND yaml_contents "\n")
       foreach(arg ${args})
-        string(APPEND yaml_contents "\
-    - ${arg}
-")
+        write("    - ${arg}")
       endforeach()
     else()
       # If the runner doesn't need any arguments, just use an empty list.
-      string(APPEND yaml_contents " []\n")
+      write(" []\n")
     endif()
   endforeach()
 
   # Write the final contents and set its location in the cache.
-  file(WRITE "${runners_yaml}" "${yaml_contents}")
+  file(GENERATE OUTPUT "${runners_yaml}" CONTENT
+    $<TARGET_PROPERTY:flash_runner_property_target,yaml_contents>)
   set(ZEPHYR_RUNNERS_YAML "${runners_yaml}" CACHE INTERNAL
     "a configuration file for the runners Python package")
 endfunction()
