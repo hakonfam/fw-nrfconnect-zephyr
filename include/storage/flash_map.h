@@ -213,6 +213,20 @@ struct device *flash_area_get_device(const struct flash_area *fa);
 #include <pm_config.h>
 #include <sys/util.h>
 
+/* Aliases for zephyr - mcuboot/ncs style naming */
+#define image_0 mcuboot_primary
+#define image_1 mcuboot_secondary
+
+#if (CONFIG_SETTINGS_FCB || CONFIG_SETTINGS_NVS)
+#define storage settings_storage
+#elif CONFIG_FILE_SYSTEM_LITTLEFS
+#define storage littlefs_storage
+#endif
+
+#if (CONFIG_SETTINGS_FCB || CONFIG_SETTINGS_NVS) && CONFIG_FILE_SYSTEM_LITTLEFS
+#error "Not supported"
+#endif
+
 #define PM_ID(label) PM_##label##_ID
 
 #define FLASH_AREA_ID(label) PM_ID(label)
