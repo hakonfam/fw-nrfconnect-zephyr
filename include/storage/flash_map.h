@@ -209,6 +209,18 @@ int flash_area_has_driver(const struct flash_area *fa);
  */
 struct device *flash_area_get_device(const struct flash_area *fa);
 
+#define FLASH_MAP_LITTLEFS_STORAGE storage
+
+#define FLASH_MAP_NVS_STORAGE storage
+
+#define FLASH_MAP_FCB_STORAGE storage
+
+#define FLASH_MAP_FAT_STORAGE storage
+
+#define FLASH_MAP_SETTINGS_STORAGE storage
+
+#define FLASH_MAP_MCUMGR_STORAGE storage
+
 #define FLASH_AREA_LABEL_EXISTS(label) \
 	DT_HAS_FIXED_PARTITION_LABEL(label)
 

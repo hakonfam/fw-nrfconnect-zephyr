@@ -426,7 +426,7 @@ static void example_initialization(void)
 	static struct fs_mount_t littlefs_mnt = {
 	.type = FS_LITTLEFS,
 	.fs_data = &cstorage,
-	.storage_dev = (void *)FLASH_AREA_ID(storage),
+	.storage_dev = (void *)FLASH_AREA_ID(FLASH_MAP_LITTLEFS_STORAGE),
 	.mnt_point = "/ff"
 	};
 

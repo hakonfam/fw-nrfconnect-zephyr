@@ -31,7 +31,8 @@ static void test_clear_settings(void)
 {
 #if IS_ENABLED(CONFIG_SETTINGS_FCB) || IS_ENABLED(CONFIG_SETTINGS_NVS)
 	const struct flash_area *fap;
-	int rc = flash_area_open(FLASH_AREA_ID(storage), &fap);
+	int rc = flash_area_open(FLASH_AREA_ID(FLASH_MAP_SETTINGS_STORAGE),
+				 &fap);
 
 	if (rc == 0) {
 		rc = flash_area_erase(fap, 0, fap->fa_size);
@@ -46,7 +47,7 @@ static void test_clear_settings(void)
 	static struct fs_mount_t littlefs_mnt = {
 	.type = FS_LITTLEFS,
 	.fs_data = &cstorage,
-	.storage_dev = (void *)FLASH_AREA_ID(storage),
+	.storage_dev = (void *)FLASH_AREA_ID(FLASH_MAP_SETTINGS_STORAGE),
 	.mnt_point = "/ff"
 };
 
