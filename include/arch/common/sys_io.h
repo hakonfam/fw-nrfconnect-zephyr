@@ -68,7 +68,7 @@ static ALWAYS_INLINE void sys_clear_bit(mem_addr_t addr, unsigned int bit)
 	*(volatile u32_t *)addr = temp & ~(1 << bit);
 }
 
-static ALWAYS_INLINE int sys_test_bit(mem_addr_t addr, unsigned int bit)
+static ALWAYS_INLINE unsigned int sys_test_bit(mem_addr_t addr, unsigned int bit)
 {
 	u32_t temp = *(volatile u32_t *)addr;
 
