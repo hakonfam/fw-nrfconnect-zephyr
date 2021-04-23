@@ -18,10 +18,17 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME, CONFIG_COUNTER_LOG_LEVEL);
 
+#if defined(CONFIG_LOG)
 #define ERR(...) LOG_INST_ERR(get_nrfx_config(dev)->log, __VA_ARGS__)
 #define WRN(...) LOG_INST_WRN(get_nrfx_config(dev)->log, __VA_ARGS__)
 #define INF(...) LOG_INST_INF(get_nrfx_config(dev)->log, __VA_ARGS__)
 #define DBG(...) LOG_INST_DBG(get_nrfx_config(dev)->log, __VA_ARGS__)
+#else
+#define ERR(...)
+#define WRN(...)
+#define INF(...)
+#define DBG(...)
+#endif
 
 #define COUNTER_MAX_TOP_VALUE RTC_COUNTER_COUNTER_Msk
 
