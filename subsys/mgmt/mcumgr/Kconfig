@@ -156,6 +156,12 @@ config IMG_MGMT_UL_CHUNK_SIZE
 	  this size gets allocated on the stack during handling of a image upload
 	  command.
 
+config IMG_MGMT_UPDATABLE_IMAGE_NUMBER
+	int "Number of supported images"
+	default 1
+	range 1 2
+	help
+	  Sets how many application images are supported (pairs of secondary and primary slots).
 
 config IMG_MGMT_VERBOSE_ERR
 	bool "Verbose logging when uploading a new image"
