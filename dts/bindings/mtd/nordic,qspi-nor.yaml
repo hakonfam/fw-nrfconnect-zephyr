@@ -52,6 +52,12 @@ properties:
       Specify the number of data lines and opcode used for writing.
       If not provided pp will be selected.
 
+  size-in-bytes:
+    type: boolean
+    required: false
+    description: |
+      Set to indicate that the size is specified in bytes not bits.
+
   address-size-32:
     type: boolean
     required: false

@@ -34,7 +34,11 @@ static nrfx_qspi_config_t QSPIconfig;
 #define QSPI_BLOCK_SIZE SPI_NOR_BLOCK_SIZE
 
 /* instance 0 flash size in bytes */
+#if DT_INST_PROP(0, size_in_bytes)
+#define INST_0_BYTES (DT_INST_PROP(0, size))
+#else
 #define INST_0_BYTES (DT_INST_PROP(0, size) / 8)
+#endif
 
 #define INST_0_SCK_FREQUENCY DT_INST_PROP(0, sck_frequency)
 BUILD_ASSERT(INST_0_SCK_FREQUENCY >= (NRF_QSPI_BASE_CLOCK_FREQ / 16),
