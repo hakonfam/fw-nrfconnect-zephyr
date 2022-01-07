@@ -13,7 +13,12 @@
 #if (CONFIG_NORDIC_QSPI_NOR - 0)
 #define FLASH_DEVICE DT_LABEL(DT_INST(0, nordic_qspi_nor))
 #define FLASH_TEST_REGION_OFFSET 0xff000
+
+#if DT_INST_PROP(0, size_in_bytes)
+#define TEST_AREA_MAX (DT_PROP(DT_INST(0, nordic_qspi_nor), size) * 8)
+#else
 #define TEST_AREA_MAX DT_PROP(DT_INST(0, nordic_qspi_nor), size)
+#endif
 
 #elif defined(CONFIG_FLASH_MCUX_FLEXSPI_NOR)
 

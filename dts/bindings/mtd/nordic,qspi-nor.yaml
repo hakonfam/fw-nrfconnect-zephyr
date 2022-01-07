@@ -21,7 +21,18 @@ properties:
     required: true
 
   size:
-    required: true
+    type: int
+    required: false
+    description: |
+      The size in bits.
+      Deprecated in favor of 'size-in-bytes'
+    deprecated: true
+
+  size-in-bytes:
+    type: int
+    required: false
+    description: |
+      The size in bytes.
 
   # Match original driver NORDIC_QSPI_NOR_QE_BIT Kconfig default.
   quad-enable-requirements:
