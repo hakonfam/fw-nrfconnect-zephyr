@@ -232,7 +232,7 @@ arduino_i2c: &i2c0 {
 			30 b0 30 b0  f7 c4 d5 5c
 			00 be 29 ff  f0 d0 ff ff
 		];
-		size = <67108864>;
+		size-in-bytes = <8388608>;
 		has-dpd;
 		t-enter-dpd = <10000>;
 		t-exit-dpd = <35000>;

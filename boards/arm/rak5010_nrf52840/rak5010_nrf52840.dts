@@ -122,7 +122,7 @@
 		sck-frequency = <16000000>;
 		label = "IS25WP064A";
 		jedec-id = [9d 70 17];
-		size = <67108864>;
+		size-in-bytes = <8388608>;
 		has-dpd;
 		t-enter-dpd = <3000>;
 		t-exit-dpd = <5000>;

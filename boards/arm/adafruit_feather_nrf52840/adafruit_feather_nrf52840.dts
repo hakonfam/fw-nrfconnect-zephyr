@@ -106,7 +106,7 @@
 		sck-frequency = <16000000>;
 		label = "GD25Q16";
 		jedec-id = [c8 40 15];
-		size = <16777216>;
+		size-in-bytes = <2097152>;
 		has-dpd;
 		t-enter-dpd = <20000>;
 		t-exit-dpd = <20000>;

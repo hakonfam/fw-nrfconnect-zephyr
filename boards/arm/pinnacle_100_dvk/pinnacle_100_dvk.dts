@@ -167,7 +167,7 @@
 		sck-frequency = <8000000>;
 		label = "MX25R64";
 		jedec-id = [c2 28 17];
-		size = <67108864>;
+		size-in-bytes = <8388608>;
 		has-dpd;
 		t-enter-dpd = <10000>;
 		t-exit-dpd = <35000>;
