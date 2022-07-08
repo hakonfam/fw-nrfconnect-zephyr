@@ -1,0 +1,10 @@
+psp:
+  address: 0xe7000
+  end_address: 0xff6a0
+  region: flash_primary
+  size: 0x186a0
+not_used:
+  address: 0xff6a0
+  size: 0x960
+  region: flash_primary
+  end_address: 0x100000

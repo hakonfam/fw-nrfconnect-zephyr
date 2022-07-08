@@ -2,6 +2,12 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
+set_property(
+  GLOBAL PROPERTY
+  psp_PM_HEX_FILE
+  ${CMAKE_CURRENT_LIST_DIR}/psp.hex
+  )
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(hello_world)
 
