@@ -425,7 +425,9 @@ def parse_modules(zephyr_base, modules=None, extra_modules=None):
             sys.exit(f'{project}, given in ZEPHYR_EXTRA_MODULES, '
                      'is not a valid zephyr module')
 
-    for module in all_modules_by_name.values():
+    for module in {**{x: all_modules_by_name[x] for x in all_modules_by_name if
+        x != 'mcuboot'}, **{x: all_modules_by_name[x] for x in
+            all_modules_by_name if x == 'mcuboot'}}.values():
         if not module.depends:
             start_modules.append(module)
         else:
