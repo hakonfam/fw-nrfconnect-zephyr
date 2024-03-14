@@ -6,5 +6,10 @@ config SOC_SERIES_NRF54HX
 	select SOC_FAMILY_NRF
 	select HAS_NRFX
 	select HAS_NORDIC_DRIVERS
+	select NRF_HAS_NRFS
+	select NRFS_HAS_CLOCK_SERVICE
+	select NRFS_HAS_DVFS_SERVICE
+	select NRFS_HAS_TEMP_SERVICE
+	select NRFS_HAS_VBUS_DETECTOR_SERVICE
 	help
 	  Enable support for nRF54H MCU series
