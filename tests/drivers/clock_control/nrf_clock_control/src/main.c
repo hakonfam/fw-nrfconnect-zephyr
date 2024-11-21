@@ -104,6 +104,32 @@ static const struct test_clk_context cpurad_hsfll_test_clk_contexts[] = {
 };
 #endif
 
+const struct nrf_clock_spec test_clk_specs_global_hsfll[] = {
+	{
+		.frequency = MHZ(128),
+		.accuracy = 0,
+		.precision = NRF_CLOCK_CONTROL_PRECISION_DEFAULT,
+	},
+	{
+		.frequency = MHZ(320),
+		.accuracy = 0,
+		.precision = NRF_CLOCK_CONTROL_PRECISION_DEFAULT,
+	},
+	{
+		.frequency = MHZ(64),
+		.accuracy = 0,
+		.precision = NRF_CLOCK_CONTROL_PRECISION_DEFAULT,
+	},
+};
+
+static const struct test_clk_context global_hsfll_test_clk_contexts[] = {
+	{
+		.clk_dev = DEVICE_DT_GET(DT_NODELABEL(hsfll120)),
+		.clk_specs = test_clk_specs_global_hsfll,
+		.clk_specs_size = ARRAY_SIZE(test_clk_specs_global_hsfll),
+	},
+};
+
 const struct nrf_clock_spec test_clk_specs_lfclk[] = {
 	{
 		.frequency = 32768,
@@ -247,6 +273,13 @@ ZTEST(nrf2_clock_control, test_lfclk_control)
 {
 	TC_PRINT("LFCLK test\n");
 	test_clock_control_request(lfclk_test_clk_contexts, ARRAY_SIZE(lfclk_test_clk_contexts));
+}
+
+ZTEST(nrf2_clock_control, test_global_hsfll_control)
+{
+	TC_PRINT("Global HSFLL test\n");
+	test_clock_control_request(global_hsfll_test_clk_contexts,
+				   ARRAY_SIZE(global_hsfll_test_clk_contexts));
 }
 
 ZTEST(nrf2_clock_control, test_safe_request_cancellation)
