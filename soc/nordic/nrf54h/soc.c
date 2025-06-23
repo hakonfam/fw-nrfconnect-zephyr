@@ -178,6 +178,11 @@ void soc_late_init_hook(void)
 			 DT_REG_ADDR(DT_NODELABEL_CPURAD_SLOT0_PARTITION) +
 			 CONFIG_ROM_START_OFFSET);
 
+	if (IS_ENABLED(CONFIG_SOC_NRF54H20_CPURAD_ENABLE_CHECK_VTOR) &&
+	    *(uint32_t *)radiocore_address == 0xFFFFFFFF) {
+		return;
+	}
+
 	/* Don't wait as this is not yet supported. */
 	bool cpu_wait = false;
 
