@@ -104,6 +104,7 @@ config SOC_NRF54H20_CPUPPR
 
 config SOC_NRF54H20_CPUFLPR
 	select RISCV_CORE_NORDIC_VPR
+	select HAS_SEGGER_RTT if ZEPHYR_SEGGER_MODULE
 
 rsource "bicr/Kconfig"
 rsource "gpd/Kconfig"
