@@ -79,6 +79,36 @@ if(CONFIG_GEN_UICR_GENERATE_PERIPHCONF)
   endforeach()
 endif(CONFIG_GEN_UICR_GENERATE_PERIPHCONF)
 
+# Set up secondary UICR arguments if enabled in the main application
+set(secondary_args)
+
+# Find the main application's .config file and check for secondary configuration
+get_filename_component(SYSBUILD_DIR ${APPLICATION_BINARY_DIR} DIRECTORY)
+file(GLOB _siblings LIST_DIRECTORIES true "${SYSBUILD_DIR}/*")
+foreach(_dir ${_siblings})
+  get_filename_component(_name ${_dir} NAME)
+  if(_name STREQUAL "uicr")
+    # Skip the UICR image itself
+    continue()
+  endif()
+  
+  set(MAIN_APP_CONFIG_FILE "${_dir}/zephyr/.config")
+  if(EXISTS ${MAIN_APP_CONFIG_FILE})
+    file(READ ${MAIN_APP_CONFIG_FILE} MAIN_APP_CONFIG_CONTENT)
+    if("${MAIN_APP_CONFIG_CONTENT}" MATCHES "CONFIG_SOC_NRF54H20_SECONDARY=y")
+      message(STATUS "Secondary UICR configuration detected in application: ${_name}")
+      list(APPEND secondary_args --secondary-enable)
+      # Additional secondary arguments can be added here as needed
+      # Examples:
+      # --secondary-processor APPLICATION
+      # --secondary-address <address>
+      # --secondary-periphconf-enable
+      # --secondary-mpcconf-enable
+      break() # Found the config, no need to check other applications
+    endif()
+  endif()
+endforeach()
+
 # Generate hex files (merged, uicr-only, and periphconf-only)
 add_custom_command(
   OUTPUT ${merged_hex_file} ${uicr_hex_file} ${periphconf_hex_file}
@@ -88,6 +118,7 @@ add_custom_command(
           --out-merged-hex ${merged_hex_file}
           --out-uicr-hex ${uicr_hex_file}
           ${periphconf_args}
+          ${secondary_args}
   DEPENDS ${periphconf_elfs}
   WORKING_DIRECTORY ${APPLICATION_BINARY_DIR}
   COMMENT "Using gen_uicr.py to generate ${merged_hex_file} from ${periphconf_elfs}"

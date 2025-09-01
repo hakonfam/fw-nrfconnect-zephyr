@@ -105,4 +105,12 @@ config SOC_NRF54H20_CPUPPR
 config SOC_NRF54H20_CPUFLPR
 	select RISCV_CORE_NORDIC_VPR
 
+config SOC_NRF54H20_SECONDARY
+	bool "Enable secondary UICR configuration"
+	depends on SOC_NRF54H20
+	help
+	  When enabled, the UICR generation will populate the secondary
+	  configuration fields instead of the primary fields. This allows
+	  configuring secondary firmware boot parameters in the UICR.
+
 rsource "bicr/Kconfig"
