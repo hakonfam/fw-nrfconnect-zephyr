@@ -66,23 +66,87 @@ class Protectedmem(c.LittleEndianStructure):
     ]
 
 
-class Recovery(c.LittleEndianStructure):
+class SecondaryTrigger(c.LittleEndianStructure):
     _pack_ = 1
     _fields_ = [
         ("ENABLE", c.c_uint32),
-        ("PROCESSOR", c.c_uint32),
-        ("INITSVTOR", c.c_uint32),
+        ("RESETREAS", c.c_uint32),
+        ("RESERVED", c.c_uint32),
+    ]
+
+
+class SecondaryProtectedmem(c.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ("ENABLE", c.c_uint32),
         ("SIZE4KB", c.c_uint32),
     ]
 
 
-class Its(c.LittleEndianStructure):
+class SecondaryWdtstart(c.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ("ENABLE", c.c_uint32),
+        ("INSTANCE", c.c_uint32),
+        ("CRV", c.c_uint32),
+    ]
+
+
+class SecondaryPeriphconf(c.LittleEndianStructure):
     _pack_ = 1
     _fields_ = [
         ("ENABLE", c.c_uint32),
         ("ADDRESS", c.c_uint32),
-        ("APPLICATIONSIZE", c.c_uint32),
-        ("RADIOCORESIZE", c.c_uint32),
+        ("MAXCOUNT", c.c_uint32),
+    ]
+
+
+class SecondaryMpcconf(c.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ("ENABLE", c.c_uint32),
+        ("ADDRESS", c.c_uint32),
+        ("MAXCOUNT", c.c_uint32),
+    ]
+
+
+class Secondary(c.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ("ENABLE", c.c_uint32),
+        ("PROCESSOR", c.c_uint32),
+        ("TRIGGER", SecondaryTrigger),
+        ("ADDRESS", c.c_uint32),
+        ("PROTECTEDMEM", SecondaryProtectedmem),
+        ("WDTSTART", SecondaryWdtstart),
+        ("PERIPHCONF", SecondaryPeriphconf),
+        ("MPCCONF", SecondaryMpcconf),
+    ]
+
+
+class SecurestorageIts(c.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ("APPLICATIONSIZE1KB", c.c_uint32),
+        ("RADIOCORESIZE1KB", c.c_uint32),
+    ]
+
+
+class SecurestorageCrypto(c.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ("APPLICATIONSIZE1KB", c.c_uint32),
+        ("RADIOCORESIZE1KB", c.c_uint32),
+    ]
+
+
+class Securestorage(c.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ("ENABLE", c.c_uint32),
+        ("ADDRESS", c.c_uint32),
+        ("CRYPTO", SecurestorageCrypto),
+        ("ITS", SecurestorageIts),
     ]
 
 
@@ -104,6 +168,15 @@ class Mpcconf(c.LittleEndianStructure):
     ]
 
 
+class Wdtstart(c.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ("ENABLE", c.c_uint32),
+        ("INSTANCE", c.c_uint32),
+        ("CRV", c.c_uint32),
+    ]
+
+
 class Uicr(c.LittleEndianStructure):
     _pack_ = 1
     _fields_ = [
@@ -114,11 +187,14 @@ class Uicr(c.LittleEndianStructure):
         ("APPROTECT", Approtect),
         ("ERASEPROTECT", c.c_uint32),
         ("PROTECTEDMEM", Protectedmem),
-        ("RECOVERY", Recovery),
-        ("ITS", Its),
-        ("RESERVED2", c.c_uint32 * 7),
+        ("WDTSTART", Wdtstart),
+        ("RESERVED2", c.c_uint32),
+        ("SECURESTORAGE", Securestorage),
+        ("RESERVED3", c.c_uint32 * 5),
         ("PERIPHCONF", Periphconf),
         ("MPCCONF", Mpcconf),
+        ("SECONDARY", Secondary),
+        ("PADDING", c.c_uint32 * 15),
     ]
 
 
@@ -179,6 +255,148 @@ def main() -> None:
         type=lambda s: int(s, 0),
         help="Absolute flash address of the UICR region (decimal or 0x-prefixed hex)",
     )
+
+    # SECURESTORAGE parameters
+    parser.add_argument(
+        "--securestorage-enable",
+        action="store_true",
+        help="Enable Secure Storage",
+    )
+    parser.add_argument(
+        "--securestorage-address",
+        type=lambda s: int(s, 0),
+        help="Start address of the Secure Storage region (decimal or 0x-prefixed hex)",
+    )
+    parser.add_argument(
+        "--securestorage-crypto-app-size1kb",
+        type=lambda s: int(s, 0),
+        help="Size of the APPLICATION crypto partition in 1 kiB blocks",
+    )
+    parser.add_argument(
+        "--securestorage-crypto-radio-size1kb",
+        type=lambda s: int(s, 0),
+        help="Size of the RADIOCORE crypto partition in 1 kiB blocks",
+    )
+    parser.add_argument(
+        "--securestorage-its-app-size1kb",
+        type=lambda s: int(s, 0),
+        help="Size of the APPLICATION ITS partition in 1 kiB blocks",
+    )
+    parser.add_argument(
+        "--securestorage-its-radio-size1kb",
+        type=lambda s: int(s, 0),
+        help="Size of the RADIOCORE ITS partition in 1 kiB blocks",
+    )
+
+    # Main WDTSTART parameters
+    parser.add_argument(
+        "--wdtstart-enable",
+        action="store_true",
+        help="Enable watchdog timer start",
+    )
+    parser.add_argument(
+        "--wdtstart-instance",
+        choices=["WDT0", "WDT1"],
+        help="Watchdog timer instance (WDT0 or WDT1)",
+    )
+    parser.add_argument(
+        "--wdtstart-crv",
+        type=lambda s: int(s, 0),
+        help="Initial CRV (Counter Reload Value) register value",
+    )
+
+    # SECONDARY firmware parameters
+    parser.add_argument(
+        "--secondary-enable",
+        action="store_true",
+        help="Enable booting of secondary firmware",
+    )
+    parser.add_argument(
+        "--secondary-processor",
+        choices=["APPLICATION", "RADIOCORE"],
+        help="Processor to boot for the secondary firmware",
+    )
+    parser.add_argument(
+        "--secondary-address",
+        type=lambda s: int(s, 0),
+        help="Start address of the secondary firmware (decimal or 0x-prefixed hex)",
+    )
+
+    # Secondary TRIGGER parameters
+    parser.add_argument(
+        "--secondary-trigger-enable",
+        action="store_true",
+        help="Enable automatic triggers for reset into secondary firmware",
+    )
+    parser.add_argument(
+        "--secondary-trigger-resetreas",
+        type=lambda s: int(s, 0),
+        help="Reset reasons that trigger automatic reset into secondary firmware (bitmask)",
+    )
+
+    # Secondary PROTECTEDMEM parameters
+    parser.add_argument(
+        "--secondary-protectedmem-enable",
+        action="store_true",
+        help="Enable Protected Memory region for the secondary firmware",
+    )
+    parser.add_argument(
+        "--secondary-protectedmem-size4kb",
+        type=lambda s: int(s, 0),
+        help="Protected Memory region size for the secondary firmware in 4 kiB blocks",
+    )
+
+    # Secondary WDTSTART parameters
+    parser.add_argument(
+        "--secondary-wdtstart-enable",
+        action="store_true",
+        help="Enable watchdog timer start for secondary firmware",
+    )
+    parser.add_argument(
+        "--secondary-wdtstart-instance",
+        choices=["WDT0", "WDT1"],
+        help="Watchdog timer instance for secondary firmware (WDT0 or WDT1)",
+    )
+    parser.add_argument(
+        "--secondary-wdtstart-crv",
+        type=lambda s: int(s, 0),
+        help="Initial CRV register value for secondary firmware watchdog timer",
+    )
+
+    # Secondary PERIPHCONF parameters
+    parser.add_argument(
+        "--secondary-periphconf-enable",
+        action="store_true",
+        help="Enable global domain peripheral configuration for secondary firmware",
+    )
+    parser.add_argument(
+        "--secondary-periphconf-address",
+        type=lambda s: int(s, 0),
+        help="Start address of peripheral configuration entries for secondary firmware",
+    )
+    parser.add_argument(
+        "--secondary-periphconf-maxcount",
+        type=lambda s: int(s, 0),
+        help="Maximum number of peripheral configuration entries for secondary firmware",
+    )
+
+    # Secondary MPCCONF parameters
+    parser.add_argument(
+        "--secondary-mpcconf-enable",
+        action="store_true",
+        help="Enable global domain MPC configuration for secondary firmware",
+    )
+    parser.add_argument(
+        "--secondary-mpcconf-address",
+        type=lambda s: int(s, 0),
+        help="Start address of MPC configuration entries for secondary firmware",
+    )
+    parser.add_argument(
+        "--secondary-mpcconf-maxcount",
+        type=lambda s: int(s, 0),
+        help="Maximum number of MPC configuration entries for secondary firmware",
+    )
+
     args = parser.parse_args()
 
     try:
@@ -189,7 +407,9 @@ def main() -> None:
                     "--periphconf-address is required when --out-periphconf-hex is used"
                 )
             if args.periphconf_size is None:
-                raise ScriptError("--periphconf-size is required when --out-periphconf-hex is used")
+                raise ScriptError(
+                    "--periphconf-size is required when --out-periphconf-hex is used"
+                )
 
         init_values = DISABLED_VALUE.to_bytes(4, "little") * (c.sizeof(Uicr) // 4)
         uicr = Uicr.from_buffer_copy(init_values)
@@ -197,14 +417,97 @@ def main() -> None:
         uicr.VERSION.MAJOR = UICR_FORMAT_VERSION_MAJOR
         uicr.VERSION.MINOR = UICR_FORMAT_VERSION_MINOR
 
+        # Configure SECURESTORAGE fields
+        if args.securestorage_enable:
+            uicr.SECURESTORAGE.ENABLE = ENABLED_VALUE
+        if args.securestorage_address is not None:
+            uicr.SECURESTORAGE.ADDRESS = args.securestorage_address
+        if args.securestorage_crypto_app_size1kb is not None:
+            uicr.SECURESTORAGE.CRYPTO.APPLICATIONSIZE1KB = (
+                args.securestorage_crypto_app_size1kb
+            )
+        if args.securestorage_crypto_radio_size1kb is not None:
+            uicr.SECURESTORAGE.CRYPTO.RADIOCORESIZE1KB = (
+                args.securestorage_crypto_radio_size1kb
+            )
+        if args.securestorage_its_app_size1kb is not None:
+            uicr.SECURESTORAGE.ITS.APPLICATIONSIZE1KB = (
+                args.securestorage_its_app_size1kb
+            )
+        if args.securestorage_its_radio_size1kb is not None:
+            uicr.SECURESTORAGE.ITS.RADIOCORESIZE1KB = (
+                args.securestorage_its_radio_size1kb
+            )
+
+        # Configure main WDTSTART fields
+        if args.wdtstart_enable:
+            uicr.WDTSTART.ENABLE = ENABLED_VALUE
+        if args.wdtstart_instance is not None:
+            wdt_instance_values = {"WDT0": 0xBD2328A8, "WDT1": 0x1730C77F}
+            uicr.WDTSTART.INSTANCE = wdt_instance_values[args.wdtstart_instance]
+        if args.wdtstart_crv is not None:
+            uicr.WDTSTART.CRV = args.wdtstart_crv
+
+        # Configure SECONDARY firmware fields
+        if args.secondary_enable:
+            uicr.SECONDARY.ENABLE = ENABLED_VALUE
+        if args.secondary_processor is not None:
+            processor_values = {"APPLICATION": 0xBD2328A8, "RADIOCORE": 0x1730C77F}
+            uicr.SECONDARY.PROCESSOR = processor_values[args.secondary_processor]
+        if args.secondary_address is not None:
+            uicr.SECONDARY.ADDRESS = args.secondary_address
+
+        # Configure SECONDARY TRIGGER fields
+        if args.secondary_trigger_enable:
+            uicr.SECONDARY.TRIGGER.ENABLE = ENABLED_VALUE
+        if args.secondary_trigger_resetreas is not None:
+            uicr.SECONDARY.TRIGGER.RESETREAS = args.secondary_trigger_resetreas
+
+        # Configure SECONDARY PROTECTEDMEM fields
+        if args.secondary_protectedmem_enable:
+            uicr.SECONDARY.PROTECTEDMEM.ENABLE = ENABLED_VALUE
+        if args.secondary_protectedmem_size4kb is not None:
+            uicr.SECONDARY.PROTECTEDMEM.SIZE4KB = args.secondary_protectedmem_size4kb
+
+        # Configure SECONDARY WDTSTART fields
+        if args.secondary_wdtstart_enable:
+            uicr.SECONDARY.WDTSTART.ENABLE = ENABLED_VALUE
+        if args.secondary_wdtstart_instance is not None:
+            wdt_instance_values = {"WDT0": 0xBD2328A8, "WDT1": 0x1730C77F}
+            uicr.SECONDARY.WDTSTART.INSTANCE = wdt_instance_values[
+                args.secondary_wdtstart_instance
+            ]
+        if args.secondary_wdtstart_crv is not None:
+            uicr.SECONDARY.WDTSTART.CRV = args.secondary_wdtstart_crv
+
+        # Configure SECONDARY PERIPHCONF fields
+        if args.secondary_periphconf_enable:
+            uicr.SECONDARY.PERIPHCONF.ENABLE = ENABLED_VALUE
+        if args.secondary_periphconf_address is not None:
+            uicr.SECONDARY.PERIPHCONF.ADDRESS = args.secondary_periphconf_address
+        if args.secondary_periphconf_maxcount is not None:
+            uicr.SECONDARY.PERIPHCONF.MAXCOUNT = args.secondary_periphconf_maxcount
+
+        # Configure SECONDARY MPCCONF fields
+        if args.secondary_mpcconf_enable:
+            uicr.SECONDARY.MPCCONF.ENABLE = ENABLED_VALUE
+        if args.secondary_mpcconf_address is not None:
+            uicr.SECONDARY.MPCCONF.ADDRESS = args.secondary_mpcconf_address
+        if args.secondary_mpcconf_maxcount is not None:
+            uicr.SECONDARY.MPCCONF.MAXCOUNT = args.secondary_mpcconf_maxcount
+
         # Process periphconf data first and configure UICR completely before creating hex objects
         periphconf_hex = IntelHex()
 
         if args.out_periphconf_hex:
-            periphconf_combined = extract_and_combine_periphconfs(args.in_periphconf_elfs)
+            periphconf_combined = extract_and_combine_periphconfs(
+                args.in_periphconf_elfs
+            )
 
             padding_len = args.periphconf_size - len(periphconf_combined)
-            periphconf_final = periphconf_combined + bytes([0xFF for _ in range(padding_len)])
+            periphconf_final = periphconf_combined + bytes(
+                [0xFF for _ in range(padding_len)]
+            )
 
             # Add periphconf data to periphconf hex object
             periphconf_hex.frombytes(periphconf_final, offset=args.periphconf_address)
