@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import ctypes as c
 import sys
+from copy import deepcopy
 from itertools import groupby, pairwise
 from typing import NamedTuple
 
@@ -328,9 +329,15 @@ def main() -> None:
         type=argparse.FileType("rb"),
         help=(
             "Path to an ELF file to extract PERIPHCONF data from. Can be provided multiple times. "
-            "The PERIPHCONF data from each ELF file is combined in a single list which is sorted "
-            "by ascending address and cleared of duplicate entries."
+            "The PERIPHCONF data from each ELF file is by default combined in a single list which "
+            "is sorted by ascending address and cleared of duplicate entries. To retain the order "
+            "in which the input configurations are passed, set '--keep-periphconf-order'"
         ),
+    )
+    parser.add_argument(
+        "--keep-periphconf-order",
+        action="store_true",
+        help="Keep periphconf entries in the order they were provided",
     )
     parser.add_argument(
         "--out-merged-hex",
@@ -680,7 +687,9 @@ def main() -> None:
         secondary_periphconf_hex = IntelHex()
 
         if args.out_periphconf_hex:
-            periphconf_combined = extract_and_combine_periphconfs(args.in_periphconf_elfs)
+            periphconf_combined = extract_and_combine_periphconfs(
+                args.in_periphconf_elfs, keep_order=args.keep_periphconf_order
+            )
 
             padding_len = args.periphconf_size - len(periphconf_combined)
             periphconf_final = periphconf_combined + bytes([0xFF for _ in range(padding_len)])
@@ -727,7 +736,7 @@ def main() -> None:
             # Handle secondary periphconf if provided
             if args.out_secondary_periphconf_hex:
                 secondary_periphconf_combined = extract_and_combine_periphconfs(
-                    args.in_secondary_periphconf_elfs
+                    args.in_secondary_periphconf_elfs, keep_order=args.keep_periphconf_order
                 )
 
                 padding_len = args.secondary_periphconf_size - len(secondary_periphconf_combined)
@@ -787,7 +796,9 @@ def main() -> None:
         sys.exit(1)
 
 
-def extract_and_combine_periphconfs(elf_files: list[argparse.FileType]) -> bytes:
+def extract_and_combine_periphconfs(
+    elf_files: list[argparse.FileType], keep_order
+) -> bytes:
     combined_periphconf = []
     ipcmap_index = 0
 
@@ -803,10 +814,12 @@ def extract_and_combine_periphconfs(elf_files: list[argparse.FileType]) -> bytes
         ipcmap_index = adjust_ipcmap_entries(periphconf, offset_index=ipcmap_index)
         combined_periphconf.extend(periphconf)
 
-    combined_periphconf.sort(key=lambda e: e.regptr)
+    sorted_periphconf = deepcopy(combined_periphconf)
+    sorted_periphconf.sort(key=lambda e: e.regptr)
+
     deduplicated_periphconf = []
 
-    for regptr, regptr_entries in groupby(combined_periphconf, key=lambda e: e.regptr):
+    for regptr, regptr_entries in groupby(sorted_periphconf, key=lambda e: e.regptr):
         entries = list(regptr_entries)
         if len(entries) > 1:
             unique_values = {e.value for e in entries}
@@ -818,6 +831,12 @@ def extract_and_combine_periphconfs(elf_files: list[argparse.FileType]) -> bytes
         deduplicated_periphconf.append(entries[0])
 
     final_periphconf = (PeriphconfEntry * len(deduplicated_periphconf))()
+
+    if keep_order:
+        seen = set()
+        deduplicated_periphconf = [entry for entry in combined_periphconf if
+                        entry.regptr not in seen and not seen.add(entry.regptr)]
+
     for i, entry in enumerate(deduplicated_periphconf):
         final_periphconf[i] = entry
 

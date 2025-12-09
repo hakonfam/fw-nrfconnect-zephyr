@@ -92,6 +92,10 @@ set(secondary_periphconf_hex_file ${APPLICATION_BINARY_DIR}/zephyr/secondary_per
 dt_nodelabel(uicr_path NODELABEL "uicr" REQUIRED)
 dt_reg_addr(UICR_ADDRESS PATH ${uicr_path} REQUIRED)
 
+if(CONFIG_GEN_UICR_GENERATE_PERIPHCONF_KEEP_ORDER)
+  set(periphconf_keep_order_arg "--keep-periphconf-order")
+endif()
+
 # Handle secure storage configuration
 set(securestorage_args)
 if(CONFIG_GEN_UICR_SECURESTORAGE)
@@ -178,7 +182,12 @@ if(CONFIG_GEN_UICR_GENERATE_PERIPHCONF)
       if(is_secondary STREQUAL "y")
         list(APPEND secondary_periphconf_elfs ${kernel_elf_path})
       else()
-        list(APPEND periphconf_elfs ${kernel_elf_path})
+        if(_name STREQUAL "mcuboot")
+          # We want MCUBoot entries first in case the blob will be updated
+          list(PREPEND periphconf_elfs ${kernel_elf_path})
+        else()
+          list(APPEND periphconf_elfs ${kernel_elf_path})
+        endif()
       endif()
     endif()
   endforeach()
@@ -274,6 +283,7 @@ add_custom_command(
           ${approtect_args}
           ${wdtstart_args}
           ${periphconf_args}
+          ${periphconf_keep_order_arg}
           ${securestorage_args}
           ${protectedmem_args}
           ${secondary_args}

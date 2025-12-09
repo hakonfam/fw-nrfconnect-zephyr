@@ -2,6 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 config IS_GEN_UICR_IMAGE
+config GEN_UICR_GENERATE_PERIPHCONF_KEEP_ORDER
+	bool "Retain order in which periphconf is passed to the script"
+	depends on GEN_UICR_GENERATE_PERIPHCONF
+	help
+	  When enabled, the entries in the PERIPHCONF hex will not be sorted by address. Instead,
+	  the entries will be kept in the order in which they are contained within the .elf files
+	  they are extracted from, and these will again be sorted by which the .elf files are
+	  passed to the script. This is useful in designs where MCUBoot is used in a Direct-XIP
+	  configuration and there is a single PERIPHCONF blob that is being updated by the
+	  primary and secondary images.
+
 	default y
 
 source "Kconfig.zephyr"
