@@ -8,9 +8,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define START_ADDRESS 0x0e100000
+#define START_ADDRESS 0x0e1f1000
 #define MAGIC_VALUE 0xBA53BA11
-#define NUM_4BYTE_WORDS ((1024*1024) / 4)
+#define NUM_4BYTE_WORDS ((0x0e1fd000 - START_ADDRESS) / 4)
 
 int main(void)
 {
@@ -22,14 +22,10 @@ int main(void)
 
 	for (int i = 0; i < NUM_4BYTE_WORDS; i++) {
 		read_value = *(uint32_t *)address;
+		*(uint32_t *)address = MAGIC_VALUE;
 
-		if (found_start) {
-			*(uint32_t *)address = MAGIC_VALUE;
-			printf("w: 0x%lx\n", address);
-		} else {
-			printf("read: 0x%x\n", read_value);
-			found_start = (read_value != MAGIC_VALUE);
-		}
+		printf("r: 0x%x\n", read_value);
+		printf("w: 0x%lx\n", address);
 
 		address += 4;
 
