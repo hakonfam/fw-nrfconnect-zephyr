@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2024 Nordic Semiconductor ASA
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Overlay for W25Q256FW Quad-SPI flash on nRF54H20
+ */
+
+&gpio6 {
+	status = "okay";
+};
+
+&exmif {
+	status = "okay";
+};

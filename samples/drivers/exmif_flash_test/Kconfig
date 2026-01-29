@@ -1,0 +1,33 @@
+# Copyright (c) 2024 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "EXMIF Flash Test Sample"
+
+config EXMIF_FLASH_TEST_ERASE_ONLY
+	bool "Erase only mode"
+	default n
+	help
+	  When enabled, only erases the flash without writing/verifying data.
+	  Useful for quickly resetting the flash to a known state.
+
+config EXMIF_FLASH_TEST_FULL_RANGE
+	bool "Test full flash range (32MB)"
+	default n
+	help
+	  When enabled, tests the entire 32MB flash range.
+	  When disabled, only tests the first 16MB (24-bit addressing).
+	  Note: Full range requires 4-byte addressing support.
+
+config EXMIF_FLASH_TEST_SECTOR_SIZE
+	int "Flash sector size in bytes"
+	default 4096
+	help
+	  The erase sector size of the flash chip.
+
+config EXMIF_FLASH_TEST_PAGE_SIZE
+	int "Flash page size in bytes"
+	default 256
+	help
+	  The page program size of the flash chip.
+
+source "Kconfig.zephyr"
