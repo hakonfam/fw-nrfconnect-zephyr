@@ -1,0 +1,22 @@
+# Copyright (c) 2024 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "EXMIF Flash dump"
+
+config EXMIF_DUMP_SIZE
+	hex "Number of bytes to read"
+	default 0x90000
+
+config EXMIF_FLASH_TEST_SECTOR_SIZE
+	int
+	default 4096
+	help
+	  The erase sector size of the flash chip.
+
+config EXMIF_FLASH_TEST_PAGE_SIZE
+	int
+	default 256
+	help
+	  The page program size of the flash chip.
+
+source "Kconfig.zephyr"
