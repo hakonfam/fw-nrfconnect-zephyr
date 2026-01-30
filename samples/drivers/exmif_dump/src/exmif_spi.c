@@ -6,6 +6,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
+#include <errno.h>
 #include <hal/nrf_gpio.h>
 
 #include "exmif_spi.h"
@@ -161,9 +162,15 @@ static void exmif_configure_transfer(const exmif_spi_transfer_req_t *req)
 		((1UL << EXMIF_CORE_SSICADDRESS_SPICTRLR0_CLKSTRETCHEN_Pos) &
 		 EXMIF_CORE_SSICADDRESS_SPICTRLR0_CLKSTRETCHEN_Msk);
 
-	/* Set baud rate divider */
+	/* Set baud rate divider (higher = slower clock)
+	 * EXMIF clock is typically 320MHz, so:
+	 *   divider 8  = 40 MHz
+	 *   divider 16 = 20 MHz
+	 *   divider 32 = 10 MHz
+	 *   divider 64 =  5 MHz
+	 */
 	exmif->CORE.SSICADDRESS.BAUDR =
-		((8 << EXMIF_CORE_SSICADDRESS_BAUDR_SCKDV_Pos) &
+		((32 << EXMIF_CORE_SSICADDRESS_BAUDR_SCKDV_Pos) &
 		 EXMIF_CORE_SSICADDRESS_BAUDR_SCKDV_Msk);
 
 	/* Set FIFO thresholds */
@@ -249,13 +256,29 @@ static int exmif_tx_data(const exmif_spi_transfer_req_t *req)
 
 static int exmif_rx_data(uint8_t *data, uint32_t len)
 {
-	while (len) {
+	uint32_t timeout = 100000;
+	uint32_t original_len = len;
+
+	while (len && timeout) {
 		uint32_t rxflr = exmif->CORE.SSICADDRESS.RXFLR & EXMIF_CORE_SSICADDRESS_RXFLR_RXTFL_Msk;
+		if (rxflr == 0) {
+			/* No data available, wait a bit */
+			k_busy_wait(1);
+			timeout--;
+			continue;
+		}
 		while (rxflr && len) {
 			*data++ = exmif->CORE.SSICADDRESS.DR[0];
 			rxflr--;
 			len--;
 		}
+		/* Reset timeout when we receive data */
+		timeout = 100000;
+	}
+
+	if (len > 0) {
+		LOG_ERR("RX timeout: received %u of %u bytes", original_len - len, original_len);
+		return -ETIMEDOUT;
 	}
 
 	return 0;

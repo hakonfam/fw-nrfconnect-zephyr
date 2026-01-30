@@ -38,7 +38,7 @@ int exmif_spi_init(void);
  */
 int exmif_spi_transceive(const exmif_spi_transfer_req_t *req);
 
-/* W25Q256FW Flash Commands */
+/* Standard SPI NOR Flash Commands (JEDEC SFDP compatible) */
 #define FLASH_CMD_WRITE_ENABLE       0x06
 #define FLASH_CMD_WRITE_DISABLE      0x04
 #define FLASH_CMD_READ_STATUS_1      0x05

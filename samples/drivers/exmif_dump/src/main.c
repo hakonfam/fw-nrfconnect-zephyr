@@ -5,6 +5,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <errno.h>
 #include <string.h>
 
 #include "exmif_spi.h"
@@ -12,9 +13,34 @@
 
 LOG_MODULE_REGISTER(flash_test, CONFIG_LOG_DEFAULT_LEVEL);
 
-/* W25Q256FW Flash Parameters */
+/* Flash Parameters (common to most SPI NOR flash) */
 #define FLASH_SECTOR_SIZE    CONFIG_EXMIF_FLASH_TEST_SECTOR_SIZE
 #define FLASH_PAGE_SIZE      CONFIG_EXMIF_FLASH_TEST_PAGE_SIZE
+
+/* Known flash manufacturer IDs */
+#define JEDEC_MFR_WINBOND    0xEF
+#define JEDEC_MFR_MACRONIX   0xC2
+#define JEDEC_MFR_MICRON     0x20
+#define JEDEC_MFR_ISSI       0x9D
+#define JEDEC_MFR_GIGADEVICE 0xC8
+
+static const char *get_manufacturer_name(uint8_t mfr_id)
+{
+	switch (mfr_id) {
+	case JEDEC_MFR_WINBOND:
+		return "Winbond";
+	case JEDEC_MFR_MACRONIX:
+		return "Macronix";
+	case JEDEC_MFR_MICRON:
+		return "Micron";
+	case JEDEC_MFR_ISSI:
+		return "ISSI";
+	case JEDEC_MFR_GIGADEVICE:
+		return "GigaDevice";
+	default:
+		return "Unknown";
+	}
+}
 
 #define FLASH_TEST_SIZE      CONFIG_EXMIF_DUMP_SIZE
 
@@ -72,13 +98,17 @@ int main(void)
 		return ret;
 	}
 
-	LOG_INF("JEDEC ID: %02x %02x %02x", jedec_id[0], jedec_id[1], jedec_id[2]);
-	uint32_t start_time = k_uptime_get_32();
+	LOG_INF("JEDEC ID: %02x %02x %02x (%s)",
+		jedec_id[0], jedec_id[1], jedec_id[2],
+		get_manufacturer_name(jedec_id[0]));
 
-	/* Verify it's a Winbond flash */
-	if (jedec_id[0] != 0xEF) {
-		LOG_WRN("Unexpected manufacturer ID (expected 0xEF for Winbond)");
+	/* Verify we got a valid response (not all 0x00 or 0xFF) */
+	if (jedec_id[0] == 0x00 || jedec_id[0] == 0xFF) {
+		LOG_ERR("Invalid JEDEC ID - flash not responding");
+		return -EIO;
 	}
+
+	uint32_t start_time = k_uptime_get_32();
 
 	/* Read and dump all sectors */
 	for (uint32_t sector = 0; sector < total_sectors; sector++) {
@@ -92,7 +122,7 @@ int main(void)
 
 			ret = flash_read_data(page_address, read_buffer, FLASH_PAGE_SIZE);
 			if (ret != 0) {
-				LOG_ERR("  Read failed at 0x%08x", page_address);
+				printk("\nRead failed at 0x%08x (ret=%d)\n", page_address, ret);
 				return ret;
 			}
 
