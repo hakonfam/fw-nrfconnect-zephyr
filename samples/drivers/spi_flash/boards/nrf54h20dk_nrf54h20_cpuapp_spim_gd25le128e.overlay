@@ -55,7 +55,7 @@
 	gd25le128e: gd25le128e@0 {
 		compatible = "jedec,spi-nor";
 		reg = <0>;
-		spi-max-frequency = <DT_FREQ_M(1)>;
+		spi-max-frequency = <DT_FREQ_M(8)>;
 		jedec-id = [c8 60 18];
 		size = <16777216>;
 		status = "okay";
