@@ -57,7 +57,7 @@
 		reg = <0>;
 		spi-max-frequency = <DT_FREQ_M(8)>;
 		jedec-id = [c8 60 18];
-		size = <16777216>;
+		size = <134217728>; /* 128Mbit in bits */
 		status = "okay";
 	};
 };
